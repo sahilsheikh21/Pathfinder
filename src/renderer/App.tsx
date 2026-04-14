@@ -1,73 +1,139 @@
-import { useEffect, useState } from 'react'
-import FrostedSurface from './components/FrostedSurface'
+import { useEffect, useMemo, useState } from 'react'
+import type { BrowserTabState } from '../shared/browser'
+import BrowserTabStrip from './components/BrowserTabStrip'
+import NavigationBar from './components/NavigationBar'
 import './styles/global.css'
-import { applyTheme, getInitialTheme, persistTheme, type ThemeMode } from './theme'
 
 function App() {
-  const [version, setVersion] = useState('loading')
-  const [platform, setPlatform] = useState('loading')
-  const [themeMode, setThemeMode] = useState<ThemeMode>(() => getInitialTheme())
+  const [tabs, setTabs] = useState<BrowserTabState[]>([])
+  const [activeTabId, setActiveTabId] = useState<string | null>(null)
+
+  const activeTab = useMemo(() => {
+    return tabs.find((tab) => tab.id === activeTabId) ?? null
+  }, [activeTabId, tabs])
+
+  const syncTabs = (nextTabs: BrowserTabState[]): void => {
+    setTabs(nextTabs)
+    const active = nextTabs.find((tab) => tab.isActive)
+    setActiveTabId(active?.id ?? nextTabs[0]?.id ?? null)
+  }
 
   useEffect(() => {
-    applyTheme(themeMode)
-    persistTheme(themeMode)
-  }, [themeMode])
+    let isMounted = true
 
-  useEffect(() => {
-    let active = true
-
-    async function loadMetadata(): Promise<void> {
-      const appVersion = await window.pathfinder.getVersion()
-      const appPlatform = await window.pathfinder.getPlatform()
-
-      if (!active) {
+    const loadInitialTabs = async (): Promise<void> => {
+      const initialTabs = await window.pathfinder.listTabs()
+      if (!isMounted) {
         return
       }
 
-      setVersion(appVersion.version)
-      setPlatform(appPlatform.platform)
+      syncTabs(initialTabs)
     }
 
-    loadMetadata().catch(() => {
-      if (active) {
-        setVersion('unavailable')
-        setPlatform('unavailable')
+    const unsubscribe = window.pathfinder.onBrowserState((payload) => {
+      if (!isMounted) {
+        return
+      }
+
+      syncTabs(payload.tabs)
+      setActiveTabId(payload.activeTabId ?? payload.tabs.find((tab) => tab.isActive)?.id ?? null)
+    })
+
+    loadInitialTabs().catch(() => {
+      if (isMounted) {
+        setTabs([])
+        setActiveTabId(null)
       }
     })
 
     return () => {
-      active = false
+      isMounted = false
+      unsubscribe()
     }
   }, [])
 
+  const handleCreateTab = async (): Promise<void> => {
+    const nextTabs = await window.pathfinder.createTab()
+    syncTabs(nextTabs)
+  }
+
+  const handleActivateTab = async (tabId: string): Promise<void> => {
+    const nextTabs = await window.pathfinder.activateTab(tabId)
+    syncTabs(nextTabs)
+  }
+
+  const handleCloseTab = async (tabId: string): Promise<void> => {
+    const nextTabs = await window.pathfinder.closeTab(tabId)
+    syncTabs(nextTabs)
+  }
+
+  const handleNavigate = async (target: string): Promise<void> => {
+    if (!activeTabId) {
+      return
+    }
+
+    const nextTabs = await window.pathfinder.navigate({ tabId: activeTabId, input: target })
+    syncTabs(nextTabs)
+  }
+
+  const handleBack = async (): Promise<void> => {
+    if (!activeTabId) {
+      return
+    }
+
+    const nextTabs = await window.pathfinder.back(activeTabId)
+    syncTabs(nextTabs)
+  }
+
+  const handleForward = async (): Promise<void> => {
+    if (!activeTabId) {
+      return
+    }
+
+    const nextTabs = await window.pathfinder.forward(activeTabId)
+    syncTabs(nextTabs)
+  }
+
+  const handleReload = async (): Promise<void> => {
+    if (!activeTabId) {
+      return
+    }
+
+    const nextTabs = await window.pathfinder.reload(activeTabId)
+    syncTabs(nextTabs)
+  }
+
+  const handleStop = async (): Promise<void> => {
+    if (!activeTabId) {
+      return
+    }
+
+    const nextTabs = await window.pathfinder.stop(activeTabId)
+    syncTabs(nextTabs)
+  }
+
   return (
-    <main style={{ padding: 'var(--pf-space-24)' }}>
-      <FrostedSurface title="Pathfinder Scaffold">
-        <p>Project scaffold initialized.</p>
-        <p>App version: {version}</p>
-        <p>Platform: {platform}</p>
-        <label htmlFor="theme-mode" style={{ display: 'inline-block', marginTop: 'var(--pf-space-16)' }}>
-          Theme mode
-        </label>
-        <br />
-        <select
-          id="theme-mode"
-          value={themeMode}
-          onChange={(event) => setThemeMode(event.target.value as ThemeMode)}
-          style={{
-            marginTop: 'var(--pf-space-8)',
-            padding: 'var(--pf-space-8) var(--pf-space-12)',
-            borderRadius: 'var(--pf-radius-pill)',
-            border: '1px solid var(--pf-border-subtle)',
-            background: 'var(--pf-bg-elevated)',
-            color: 'var(--pf-text-primary)'
-          }}
-        >
-          <option value="system">System</option>
-          <option value="light">Light</option>
-          <option value="dark">Dark</option>
-        </select>
-      </FrostedSurface>
+    <main className="browser-shell">
+      <section className="browser-chrome">
+        <BrowserTabStrip
+          tabs={tabs}
+          activeTabId={activeTabId}
+          onCreateTab={handleCreateTab}
+          onActivateTab={handleActivateTab}
+          onCloseTab={handleCloseTab}
+        />
+
+        <NavigationBar
+          activeTab={activeTab}
+          onBack={handleBack}
+          onForward={handleForward}
+          onReload={handleReload}
+          onStop={handleStop}
+          onNavigate={handleNavigate}
+        />
+      </section>
+
+      <section className="browser-viewport" aria-label="Active tab viewport" />
     </main>
   )
 }
