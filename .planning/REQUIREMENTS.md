@@ -7,8 +7,8 @@
 
 ### Browser Core
 
-- [ ] **BROW-01**: User can open, close, and switch between multiple tabs in one window.
-- [ ] **BROW-02**: User can navigate with back, forward, reload, and stop controls.
+- [x] **BROW-01**: User can open, close, and switch between multiple tabs in one window.
+- [x] **BROW-02**: User can navigate with back, forward, reload, and stop controls.
 - [x] **BROW-03**: User can enter either a URL or search query in one address bar with correct routing.
 - [ ] **BROW-04**: User can recover active browsing session state after an unexpected crash.
 - [ ] **BROW-05**: User can download files with visible progress and configurable download path.
@@ -73,8 +73,8 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| BROW-01 | Phase 2 | Pending |
-| BROW-02 | Phase 2 | Pending |
+| BROW-01 | Phase 2 | Complete |
+| BROW-02 | Phase 2 | Complete |
 | BROW-03 | Phase 2 | Complete |
 | BROW-04 | Phase 2 | Pending |
 | BROW-05 | Phase 2 | Pending |
