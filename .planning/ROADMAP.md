@@ -44,7 +44,7 @@ Requirements: (foundation)
 
 Plans:
 - [x] 01-01-PLAN.md - Scaffold tooling, secure process bootstrap, typed IPC contracts
-- [ ] 01-02-PLAN.md - Apple-style token shell, CI quality gates, packaging baseline
+- [x] 01-02-PLAN.md - Apple-style token shell, CI quality gates, packaging baseline
 
 **UI hint**: yes
 Success criteria:
