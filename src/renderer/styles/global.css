@@ -1,0 +1,29 @@
+@import "./tokens.css";
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  margin: 0;
+  min-height: 100%;
+}
+
+body {
+  font-family: var(--pf-font-family);
+  background: radial-gradient(circle at top right, rgba(10, 132, 255, 0.18), transparent 45%), var(--pf-bg-base);
+  color: var(--pf-text-primary);
+}
+
+button,
+select {
+  font: inherit;
+}
+
+button:focus-visible,
+select:focus-visible {
+  outline: 2px solid var(--pf-accent-primary);
+  outline-offset: 2px;
+}

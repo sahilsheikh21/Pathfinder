@@ -1,0 +1,39 @@
+:root {
+  --pf-bg-base: #f4f5f8;
+  --pf-bg-elevated: rgba(255, 255, 255, 0.78);
+  --pf-bg-frosted: rgba(255, 255, 255, 0.56);
+  --pf-text-primary: #111216;
+  --pf-text-secondary: #4a4e57;
+  --pf-accent-primary: #0a84ff;
+  --pf-accent-hover: #006adc;
+  --pf-border-subtle: rgba(32, 35, 43, 0.14);
+  --pf-radius-sm: 8px;
+  --pf-radius-md: 14px;
+  --pf-radius-lg: 18px;
+  --pf-radius-xl: 24px;
+  --pf-radius-pill: 999px;
+  --pf-space-4: 4px;
+  --pf-space-8: 8px;
+  --pf-space-12: 12px;
+  --pf-space-16: 16px;
+  --pf-space-24: 24px;
+  --pf-space-32: 32px;
+  --pf-shadow-sm: 0 8px 18px rgba(19, 24, 34, 0.08);
+  --pf-shadow-md: 0 18px 30px rgba(19, 24, 34, 0.12);
+  --pf-shadow-lg: 0 24px 42px rgba(19, 24, 34, 0.16);
+  --pf-font-family: "Segoe UI", "SF Pro Text", "Helvetica Neue", sans-serif;
+}
+
+:root.theme-dark {
+  --pf-bg-base: #16181f;
+  --pf-bg-elevated: rgba(30, 33, 43, 0.82);
+  --pf-bg-frosted: rgba(28, 33, 44, 0.68);
+  --pf-text-primary: #f3f5fa;
+  --pf-text-secondary: #b2b8c8;
+  --pf-accent-primary: #4ba3ff;
+  --pf-accent-hover: #2a8be8;
+  --pf-border-subtle: rgba(177, 185, 206, 0.22);
+  --pf-shadow-sm: 0 8px 18px rgba(0, 0, 0, 0.25);
+  --pf-shadow-md: 0 18px 30px rgba(0, 0, 0, 0.34);
+  --pf-shadow-lg: 0 24px 42px rgba(0, 0, 0, 0.42);
+}
