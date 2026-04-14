@@ -12,14 +12,17 @@ See: .planning/PROJECT.md (updated 2026-04-14)
 - Current milestone: Milestone 1 (Core Browser Shell)
 - Current phase: 1
 - Total phases: 16
+- Phase 1 planning status: Planned (2 plans, 2 waves)
 - Requirements status: 30 pending, 0 complete, 0 blocked
-- Research status: Complete (.planning/research/SUMMARY.md)
-- Roadmap status: Initialized
+- Research status: Complete (.planning/research/SUMMARY.md and phase research)
+- Roadmap status: Initialized and phase 1 planned
 
 ## Notes
 
 - Roadmap structure follows implementation_plan milestone breakdown.
-- Use /gsd-discuss-phase 1 to start execution context for Phase 1.
+- Phase planning artifacts exist in .planning/phases/01-project-scaffold/.
+- Use /gsd-execute-phase 1 to run planned work.
 
 ---
 *Initialized: 2026-04-14*
+*Updated: 2026-04-14 after phase 1 planning*

@@ -40,6 +40,12 @@
 ### Phase 1: Project Scaffold
 Goal: Establish foundation with Electron, TypeScript, React, build pipeline, and Apple-style design tokens/components.
 Requirements: (foundation)
+**Plans:** 2 plans
+
+Plans:
+- [ ] 01-01-PLAN.md - Scaffold tooling, secure process bootstrap, typed IPC contracts
+- [ ] 01-02-PLAN.md - Apple-style token shell, CI quality gates, packaging baseline
+
 **UI hint**: yes
 Success criteria:
 1. Electron main, preload, and renderer processes build and run in development mode.
