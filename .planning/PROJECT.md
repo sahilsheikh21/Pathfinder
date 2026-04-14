@@ -12,7 +12,9 @@ Users can reliably automate and delegate multi-step browser tasks from a single 
 
 ### Validated
 
-(None yet — ship to validate)
+- ✓ Electron + React + TypeScript scaffold with secure preload IPC baseline — Phase 1
+- ✓ Tokenized Apple-style renderer shell foundation with theme mode switching — Phase 1
+- ✓ CI quality gate baseline (lint, typecheck, build) and packaging config scaffold — Phase 1
 
 ### Active
 
@@ -36,6 +38,8 @@ Users can reliably automate and delegate multi-step browser tasks from a single 
 ## Context
 
 The project is based on prior research comparing browser engine and framework options. Chromium was selected for embeddability and automation compatibility, with Electron chosen for deep browser control, CDP access, and ecosystem maturity. The product direction includes Comet-style agentic browsing, but implemented as explicit capabilities phased over milestones (core shell, automation, AI integration, polish/distribution).
+
+Current state: Phase 1 is complete. The project now has a runnable Electron app scaffold, typed IPC bridge, tokenized UI baseline, and CI checks. The next focus is implementing Browser Core behavior in Phase 2.
 
 ## Constraints
 
@@ -73,4 +77,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-14 after initialization*
+*Last updated: 2026-04-14 after Phase 1 completion*
