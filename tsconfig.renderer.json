@@ -1,0 +1,12 @@
+{
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "composite": true,
+    "tsBuildInfoFile": "node_modules/.tmp/tsbuildinfo.renderer",
+    "jsx": "react-jsx",
+    "types": ["node", "vite/client"],
+    "outDir": "dist/renderer"
+  },
+  "include": ["src/renderer/**/*.ts", "src/renderer/**/*.tsx", "src/shared/**/*.ts", "src/renderer/**/*.d.ts"],
+  "exclude": ["src/main/**", "src/preload/**"]
+}

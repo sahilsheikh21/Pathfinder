@@ -1,0 +1,35 @@
+{
+  "name": "pathfinder",
+  "version": "0.1.0",
+  "description": "AI-powered lightweight browser for Windows",
+  "private": true,
+  "type": "module",
+  "main": "dist/main/main.js",
+  "scripts": {
+    "dev": "electron-vite dev",
+    "build": "electron-vite build",
+    "typecheck": "tsc -b tsconfig.main.json tsconfig.preload.json tsconfig.renderer.json --pretty false",
+    "lint": "eslint . --ext .ts,.tsx --max-warnings 0",
+    "package": "electron-builder --config electron-builder.yml",
+    "postinstall": "electron-builder install-app-deps"
+  },
+  "dependencies": {
+    "react": "~19.2.5",
+    "react-dom": "~19.2.5"
+  },
+  "devDependencies": {
+    "@electron/rebuild": "~4.0.3",
+    "@types/node": "~24.6.2",
+    "@types/react": "~19.2.2",
+    "@types/react-dom": "~19.2.2",
+    "@typescript-eslint/eslint-plugin": "~8.58.2",
+    "@typescript-eslint/parser": "~8.58.2",
+    "@vitejs/plugin-react": "~5.2.0",
+    "electron": "~41.2.0",
+    "electron-builder": "~26.8.1",
+    "electron-vite": "~5.0.0",
+    "eslint": "~10.2.0",
+    "typescript": "~6.0.2",
+    "vite": "~7.3.2"
+  }
+}
