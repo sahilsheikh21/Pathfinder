@@ -57,6 +57,13 @@ Success criteria:
 ### Phase 2: Browser Core
 Goal: Deliver baseline browser behavior with tabs and navigation.
 Requirements: BROW-01, BROW-02, BROW-03, BROW-04, BROW-05
+**Plans:** 3 plans
+
+Plans:
+- [ ] 02-01-PLAN.md - Define browser-core contracts and omnibox routing primitives
+- [ ] 02-02-PLAN.md - Implement tab runtime and navigation shell wiring
+- [ ] 02-03-PLAN.md - Add download lifecycle visibility and crash-session restore
+
 Success criteria:
 1. Users can create, close, and switch tabs while preserving per-tab navigation state.
 2. Address bar correctly routes URL input versus search query fallback.
@@ -192,4 +199,4 @@ Success criteria:
 
 ---
 *Roadmap created: 2026-04-14*
-*Last updated: 2026-04-14 after initial roadmap creation*
+*Last updated: 2026-04-14 after phase 2 planning*
