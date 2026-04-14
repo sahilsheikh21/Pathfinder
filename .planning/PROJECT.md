@@ -15,10 +15,10 @@ Users can reliably automate and delegate multi-step browser tasks from a single 
 - ✓ Electron + React + TypeScript scaffold with secure preload IPC baseline — Phase 1
 - ✓ Tokenized Apple-style renderer shell foundation with theme mode switching — Phase 1
 - ✓ CI quality gate baseline (lint, typecheck, build) and packaging config scaffold — Phase 1
+- ✓ Chromium-based desktop browser shell with tabs, address bar routing, navigation controls, downloads, and crash-session recovery — Phase 2
 
 ### Active
 
-- [ ] Chromium-based desktop browser shell with tabs, address bar, and navigation
 - [ ] Command palette for browser actions, automation commands, and AI commands
 - [ ] Quick search popup window with hotkey toggle and dismiss behavior
 - [ ] Automation engine with record, save, and replay using structured JSON workflows
@@ -39,7 +39,7 @@ Users can reliably automate and delegate multi-step browser tasks from a single 
 
 The project is based on prior research comparing browser engine and framework options. Chromium was selected for embeddability and automation compatibility, with Electron chosen for deep browser control, CDP access, and ecosystem maturity. The product direction includes Comet-style agentic browsing, but implemented as explicit capabilities phased over milestones (core shell, automation, AI integration, polish/distribution).
 
-Current state: Phase 1 is complete. The project now has a runnable Electron app scaffold, typed IPC bridge, tokenized UI baseline, and CI checks. The next focus is implementing Browser Core behavior in Phase 2.
+Current state: Phases 1 and 2 are complete. The project now has a runnable Electron browser shell with typed IPC, multi-tab runtime, omnibox routing, navigation controls, download telemetry, and session restore. The next focus is Phase 3 (home starter page).
 
 ## Constraints
 
@@ -77,4 +77,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-14 after Phase 1 completion*
+*Last updated: 2026-04-14 after Phase 2 completion*
