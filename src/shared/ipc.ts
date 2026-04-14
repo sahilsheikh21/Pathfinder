@@ -19,8 +19,8 @@ export const IPC_CHANNELS = {
   browserReload: 'browser:reload',
   browserStop: 'browser:stop',
   browserGetDownloads: 'browser:getDownloads',
-  browserOnState: 'browser:onState',
-  browserOnDownloads: 'browser:onDownloads'
+  browserOnState: 'browser:state',
+  browserOnDownloads: 'browser:downloads'
 } as const
 
 export type IpcChannel = (typeof IPC_CHANNELS)[keyof typeof IPC_CHANNELS]
