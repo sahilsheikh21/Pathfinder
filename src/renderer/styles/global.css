@@ -161,6 +161,58 @@ input {
   padding-top: 96px;
 }
 
+.download-shelf {
+  position: fixed;
+  right: var(--pf-space-12);
+  bottom: var(--pf-space-12);
+  width: min(420px, calc(100vw - 24px));
+  max-height: 45vh;
+  overflow-y: auto;
+  padding: var(--pf-space-8);
+  border: 1px solid var(--pf-border-subtle);
+  border-radius: var(--pf-radius-md);
+  background: var(--pf-bg-elevated);
+  box-shadow: var(--pf-shadow-md);
+}
+
+.download-shelf__item {
+  display: grid;
+  gap: var(--pf-space-4);
+  padding: var(--pf-space-8);
+  border-bottom: 1px solid var(--pf-border-subtle);
+}
+
+.download-shelf__item:last-child {
+  border-bottom: 0;
+}
+
+.download-shelf__meta {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--pf-space-8);
+  color: var(--pf-text-primary);
+}
+
+.download-shelf__bar {
+  width: 100%;
+  height: 6px;
+  border-radius: var(--pf-radius-pill);
+  background: color-mix(in srgb, var(--pf-border-subtle) 70%, transparent);
+  overflow: hidden;
+}
+
+.download-shelf__bar span {
+  display: block;
+  height: 100%;
+  background: var(--pf-accent-primary);
+}
+
+.download-shelf__status {
+  margin: 0;
+  font-size: 12px;
+  color: var(--pf-text-secondary);
+}
+
 button:focus-visible,
 select:focus-visible,
 input:focus-visible {

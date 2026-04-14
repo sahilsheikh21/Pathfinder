@@ -1,12 +1,14 @@
 import { useEffect, useMemo, useState } from 'react'
-import type { BrowserTabState } from '../shared/browser'
+import type { BrowserTabState, DownloadState } from '../shared/browser'
 import BrowserTabStrip from './components/BrowserTabStrip'
+import DownloadShelf from './components/DownloadShelf'
 import NavigationBar from './components/NavigationBar'
 import './styles/global.css'
 
 function App() {
   const [tabs, setTabs] = useState<BrowserTabState[]>([])
   const [activeTabId, setActiveTabId] = useState<string | null>(null)
+  const [downloads, setDownloads] = useState<DownloadState[]>([])
 
   const activeTab = useMemo(() => {
     return tabs.find((tab) => tab.id === activeTabId) ?? null
@@ -30,6 +32,15 @@ function App() {
       syncTabs(initialTabs)
     }
 
+    const loadInitialDownloads = async (): Promise<void> => {
+      const initialDownloads = await window.pathfinder.listDownloads()
+      if (!isMounted) {
+        return
+      }
+
+      setDownloads(initialDownloads)
+    }
+
     const unsubscribe = window.pathfinder.onBrowserState((payload) => {
       if (!isMounted) {
         return
@@ -39,6 +50,14 @@ function App() {
       setActiveTabId(payload.activeTabId ?? payload.tabs.find((tab) => tab.isActive)?.id ?? null)
     })
 
+    const unsubscribeDownloads = window.pathfinder.onDownloadState((payload) => {
+      if (!isMounted) {
+        return
+      }
+
+      setDownloads(payload.downloads)
+    })
+
     loadInitialTabs().catch(() => {
       if (isMounted) {
         setTabs([])
@@ -46,9 +65,16 @@ function App() {
       }
     })
 
+    loadInitialDownloads().catch(() => {
+      if (isMounted) {
+        setDownloads([])
+      }
+    })
+
     return () => {
       isMounted = false
       unsubscribe()
+      unsubscribeDownloads()
     }
   }, [])
 
@@ -134,6 +160,7 @@ function App() {
       </section>
 
       <section className="browser-viewport" aria-label="Active tab viewport" />
+      <DownloadShelf downloads={downloads} />
     </main>
   )
 }

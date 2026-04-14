@@ -2,6 +2,7 @@ import { BrowserWindow, WebContentsView } from 'electron'
 import { randomUUID } from 'node:crypto'
 import type {
   BrowserNavigationRequest,
+  BrowserSessionSnapshot,
   BrowserStatePayload,
   BrowserTabState
 } from '../shared/browser'
@@ -49,35 +50,47 @@ export class BrowserRuntime {
       }))
   }
 
+  exportSnapshot(): BrowserSessionSnapshot {
+    return {
+      tabs: this.getTabSnapshotList(),
+      activeTabId: this.activeTabId,
+      savedAt: new Date().toISOString()
+    }
+  }
+
+  restoreFromSnapshot(snapshot: BrowserSessionSnapshot): BrowserTabState[] {
+    this.destroyAllTabs()
+
+    if (snapshot.tabs.length === 0) {
+      return this.createTab('about:blank')
+    }
+
+    for (const savedTab of snapshot.tabs) {
+      const tabId = savedTab.id || randomUUID()
+      const tab = this.createTabRecord(tabId, savedTab.url)
+      tab.title = savedTab.title || tab.title
+      tab.isLoading = savedTab.isLoading
+      tab.canGoBack = savedTab.canGoBack
+      tab.canGoForward = savedTab.canGoForward
+    }
+
+    const preferredTabId =
+      snapshot.activeTabId && this.tabs.has(snapshot.activeTabId)
+        ? snapshot.activeTabId
+        : this.tabOrder[0] ?? null
+
+    if (preferredTabId) {
+      this.activateTab(preferredTabId)
+    }
+
+    this.emitState()
+    return this.getTabSnapshotList()
+  }
+
   createTab(initialUrl?: string): BrowserTabState[] {
     const tabId = randomUUID()
-    const view = new WebContentsView({
-      webPreferences: {
-        contextIsolation: true,
-        nodeIntegration: false,
-        sandbox: true
-      }
-    })
-
-    const tab: TabRecord = {
-      id: tabId,
-      title: 'New Tab',
-      url: 'about:blank',
-      isLoading: false,
-      canGoBack: false,
-      canGoForward: false,
-      view
-    }
-
-    this.tabs.set(tabId, tab)
-    this.tabOrder.push(tabId)
-    this.bindTabEvents(tab)
+    this.createTabRecord(tabId, initialUrl)
     this.activateTab(tabId)
-
-    const target = this.normalizeNavigationTarget(initialUrl)
-    if (target) {
-      void tab.view.webContents.loadURL(target)
-    }
 
     this.emitState()
     return this.getTabSnapshotList()
@@ -271,5 +284,59 @@ export class BrowserRuntime {
     if (currentUrl) {
       tab.url = currentUrl
     }
+  }
+
+  private createTabRecord(tabId: string, initialUrl?: string): TabRecord {
+    const view = new WebContentsView({
+      webPreferences: {
+        contextIsolation: true,
+        nodeIntegration: false,
+        sandbox: true
+      }
+    })
+
+    const tab: TabRecord = {
+      id: tabId,
+      title: 'New Tab',
+      url: 'about:blank',
+      isLoading: false,
+      canGoBack: false,
+      canGoForward: false,
+      view
+    }
+
+    this.tabs.set(tabId, tab)
+    this.tabOrder.push(tabId)
+    this.bindTabEvents(tab)
+
+    const target = this.normalizeNavigationTarget(initialUrl)
+    if (target) {
+      void tab.view.webContents.loadURL(target)
+    }
+
+    return tab
+  }
+
+  private destroyAllTabs(): void {
+    for (const tabId of this.tabOrder) {
+      const tab = this.tabs.get(tabId)
+      if (!tab) {
+        continue
+      }
+
+      try {
+        this.mainWindow.contentView.removeChildView(tab.view)
+      } catch {
+        // No-op when the view is not currently attached.
+      }
+
+      if (!tab.view.webContents.isDestroyed()) {
+        tab.view.webContents.close()
+      }
+    }
+
+    this.tabs.clear()
+    this.tabOrder.splice(0, this.tabOrder.length)
+    this.activeTabId = null
   }
 }
