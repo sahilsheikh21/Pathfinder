@@ -36,7 +36,8 @@ See: .planning/PROJECT.md (updated 2026-04-14)
 - Roadmap structure follows implementation_plan milestone breakdown.
 - Phase 1 artifacts include SUMMARY, REVIEW, and VERIFICATION outputs.
 - Next executable step: /gsd-discuss-phase 2 or /gsd-plan-phase 2.
+- Phase 2 discuss context captured in .planning/phases/02-browser-core/02-CONTEXT.md and 02-DISCUSSION-LOG.md.
 
 ---
 *Initialized: 2026-04-14*
-*Updated: 2026-04-14 after phase 1 execution*
+*Updated: 2026-04-14 after phase 2 discussion capture*
