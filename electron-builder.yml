@@ -1,0 +1,13 @@
+appId: com.pathfinder.browser
+productName: Pathfinder
+
+directories:
+  output: release
+
+files:
+  - out/**
+  - package.json
+
+win:
+  target:
+    - nsis
