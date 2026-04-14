@@ -73,42 +73,42 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| BROW-01 | TBD | Pending |
-| BROW-02 | TBD | Pending |
-| BROW-03 | TBD | Pending |
-| BROW-04 | TBD | Pending |
-| BROW-05 | TBD | Pending |
-| HOME-01 | TBD | Pending |
-| HOME-02 | TBD | Pending |
-| HOME-03 | TBD | Pending |
-| CMD-01 | TBD | Pending |
-| CMD-02 | TBD | Pending |
-| QSR-01 | TBD | Pending |
-| QSR-02 | TBD | Pending |
-| AUTO-01 | TBD | Pending |
-| AUTO-02 | TBD | Pending |
-| AUTO-03 | TBD | Pending |
-| AUTO-04 | TBD | Pending |
-| AUTO-05 | TBD | Pending |
-| AI-01 | TBD | Pending |
-| AI-02 | TBD | Pending |
-| AI-03 | TBD | Pending |
-| AI-04 | TBD | Pending |
-| AI-05 | TBD | Pending |
-| SIDE-01 | TBD | Pending |
-| SET-01 | TBD | Pending |
-| SET-02 | TBD | Pending |
-| SET-03 | TBD | Pending |
-| SET-04 | TBD | Pending |
-| SET-05 | TBD | Pending |
-| REL-01 | TBD | Pending |
-| REL-02 | TBD | Pending |
+| BROW-01 | Phase 2 | Pending |
+| BROW-02 | Phase 2 | Pending |
+| BROW-03 | Phase 2 | Pending |
+| BROW-04 | Phase 2 | Pending |
+| BROW-05 | Phase 2 | Pending |
+| HOME-01 | Phase 3 | Pending |
+| HOME-02 | Phase 3 | Pending |
+| HOME-03 | Phase 3 | Pending |
+| CMD-01 | Phase 4 | Pending |
+| CMD-02 | Phase 4 | Pending |
+| QSR-01 | Phase 5 | Pending |
+| QSR-02 | Phase 5 | Pending |
+| AUTO-01 | Phase 6 | Pending |
+| AUTO-02 | Phase 7 | Pending |
+| AUTO-03 | Phase 8 | Pending |
+| AUTO-04 | Phase 9 | Pending |
+| AUTO-05 | Phase 9 | Pending |
+| AI-01 | Phase 10 | Pending |
+| AI-02 | Phase 11 | Pending |
+| AI-03 | Phase 12 | Pending |
+| AI-04 | Phase 13 | Pending |
+| AI-05 | Phase 12 | Pending |
+| SIDE-01 | Phase 9 | Pending |
+| SET-01 | Phase 14 | Pending |
+| SET-02 | Phase 15 | Pending |
+| SET-03 | Phase 14 | Pending |
+| SET-04 | Phase 10 | Pending |
+| SET-05 | Phase 15 | Pending |
+| REL-01 | Phase 16 | Pending |
+| REL-02 | Phase 16 | Pending |
 
 **Coverage:**
 - v1 requirements: 30 total
-- Mapped to phases: 0
-- Unmapped: 30 ⚠️
+- Mapped to phases: 30
+- Unmapped: 0 ✓
 
 ---
 *Requirements defined: 2026-04-14*
-*Last updated: 2026-04-14 after initial definition*
+*Last updated: 2026-04-14 after roadmap mapping*
