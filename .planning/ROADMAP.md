@@ -62,7 +62,7 @@ Requirements: BROW-01, BROW-02, BROW-03, BROW-04, BROW-05
 Plans:
 - [x] 02-01-PLAN.md - Define browser-core contracts and omnibox routing primitives
 - [x] 02-02-PLAN.md - Implement tab runtime and navigation shell wiring
-- [ ] 02-03-PLAN.md - Add download lifecycle visibility and crash-session restore
+- [x] 02-03-PLAN.md - Add download lifecycle visibility and crash-session restore
 
 Success criteria:
 1. Users can create, close, and switch tabs while preserving per-tab navigation state.
