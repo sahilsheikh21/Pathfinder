@@ -107,6 +107,13 @@ Success criteria:
 ### Phase 5: Quick Search Popup
 Goal: Add secondary quick-search window flow for fast lookups.
 Requirements: QSR-01, QSR-02
+**Plans:** 3 plans
+
+Plans:
+- [ ] 05-01-PLAN.md - Define quick-search IPC contracts and renderer hotkey trigger wiring
+- [ ] 05-02-PLAN.md - Implement reusable popup window lifecycle and main-process routing
+- [ ] 05-03-PLAN.md - Build popup renderer UX and selection-to-active-tab execution flow
+
 Success criteria:
 1. Quick-search popup opens and closes via hotkey toggle and Escape.
 2. Popup stays always-on-top and supports resize/drag interactions.
@@ -216,4 +223,4 @@ Success criteria:
 
 ---
 *Roadmap created: 2026-04-14*
-*Last updated: 2026-04-15 after phase 4 planning*
+*Last updated: 2026-04-15 after phase 5 planning*
