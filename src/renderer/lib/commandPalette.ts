@@ -31,6 +31,8 @@ export interface BrowserCommandDeps {
   toggleSidebar?: () => Promise<void>
   openSidebarLibrary?: () => Promise<void>
   openSidebarHistory?: () => Promise<void>
+  openAiConfig?: () => Promise<void>
+  validateAiConfig?: () => Promise<void>
   activeTabId: string | null
 }
 
@@ -260,6 +262,32 @@ export const createBrowserCommands = (deps: BrowserCommandDeps): CommandPaletteC
         }
 
         await deps.openSidebarHistory()
+      }
+    },
+    {
+      id: 'ai.config.open',
+      title: 'AI: Open Provider Configuration',
+      description: 'Open sidebar and focus AI provider configuration controls.',
+      keywords: ['ai', 'provider', 'config', 'settings', 'sidebar'],
+      run: async () => {
+        if (!deps.openAiConfig) {
+          throw new Error('AI configuration is unavailable.')
+        }
+
+        await deps.openAiConfig()
+      }
+    },
+    {
+      id: 'ai.config.validate',
+      title: 'AI: Validate Provider Connection',
+      description: 'Run AI provider validation for the selected adapter settings.',
+      keywords: ['ai', 'validate', 'provider', 'connection', 'health'],
+      run: async () => {
+        if (!deps.validateAiConfig) {
+          throw new Error('AI validation is unavailable.')
+        }
+
+        await deps.validateAiConfig()
       }
     },
     {
