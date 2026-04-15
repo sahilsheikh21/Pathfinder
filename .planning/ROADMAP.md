@@ -23,7 +23,7 @@
 | 3 | Home starter page | Deliver custom new-tab experience | HOME-01..HOME-03 | 3 |
 | 4 | Command palette | 3/3 | Complete    | 2026-04-15 |
 | 5 | Quick search popup | 3/3 | Complete    | 2026-04-15 |
-| 6 | CDP integration | Establish Playwright-Core + CDP bridge | AUTO-01 | 3 |
+| 6 | CDP integration | 3/3 | Complete    | 2026-04-15 |
 | 7 | Action recording | Capture user actions into workflow schema | AUTO-02 | 3 |
 | 8 | Automation playback | Execute workflows with variable injection and guardrails | AUTO-03 | 3 |
 | 9 | Sidebar and history | Deliver automation library and execution history UX | AUTO-04, AUTO-05, SIDE-01 | 4 |
@@ -126,7 +126,7 @@ Success criteria:
 Goal: Introduce automation substrate by attaching Playwright Core through CDP.
 Requirements: AUTO-01
 Status: Planned (2026-04-15)
-**Plans:** 3 plans
+**Plans:** 3/3 plans complete
 
 Plans:
 - [x] 06-01-PLAN.md - Define Playwright/CDP dependency and typed automation bridge contracts
