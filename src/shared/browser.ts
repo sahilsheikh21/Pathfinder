@@ -335,3 +335,111 @@ export interface RecentAutomationPreview {
   lastRunAt: string | null
   status: 'never-run' | 'success' | 'failed'
 }
+
+export type AutomationLibraryOrigin = 'recorded' | 'imported'
+
+export interface AutomationLibraryItem {
+  id: string
+  name: string
+  description?: string
+  tags: string[]
+  workflowPath?: string
+  workflowDocument?: RecorderWorkflowDocument
+  origin: AutomationLibraryOrigin
+  updatedAt: string
+  lastRunAt: string | null
+}
+
+export interface AutomationLibraryFilter {
+  query?: string
+  tags?: string[]
+}
+
+export interface AutomationLibraryListRequest {
+  filter?: AutomationLibraryFilter
+}
+
+export interface AutomationLibraryUpsertRequest {
+  item: Omit<AutomationLibraryItem, 'updatedAt' | 'lastRunAt'>
+}
+
+export interface AutomationLibraryDeleteRequest {
+  id: string
+}
+
+export type AutomationRunSourceLabel = 'sidebar' | 'command' | 'home' | 'unknown'
+
+export interface AutomationLibraryRunRequest {
+  id: string
+  tabId?: string
+  sourceLabel?: AutomationRunSourceLabel
+  variables?: Record<string, string>
+}
+
+export interface AutomationLibraryResult {
+  items: AutomationLibraryItem[]
+  item?: AutomationLibraryItem
+}
+
+export type AutomationHistoryStatus = 'running' | 'success' | 'failed' | 'cancelled'
+
+export interface AutomationHistoryEntry {
+  id: string
+  workflowId: string
+  workflowNameSnapshot: string
+  tagsSnapshot: string[]
+  status: AutomationHistoryStatus
+  sourceLabel: AutomationRunSourceLabel
+  startedAt: string
+  finishedAt: string | null
+  durationMs: number | null
+  failureSnippet: string | null
+  failureDetail: string | null
+  runId: string | null
+  targetUrlAtStart: string | null
+  workflowOrigin: AutomationLibraryOrigin
+  workflowDeleted?: boolean
+}
+
+export interface AutomationHistoryListRequest {
+  status?: AutomationHistoryStatus | 'all'
+  query?: string
+  limit?: number
+}
+
+export interface AutomationHistoryListResult {
+  entries: AutomationHistoryEntry[]
+}
+
+export interface AutomationHistoryRemoveRequest {
+  id: string
+}
+
+export interface AutomationHistoryClearRequest {
+  preserveRunning?: boolean
+}
+
+export interface AutomationHistoryRerunRequest {
+  id: string
+  tabId?: string
+}
+
+export type AutomationSidebarSection = 'library' | 'history' | 'ai-chat'
+
+export interface AutomationSidebarSectionPreferences {
+  query?: string
+  tags?: string[]
+  scrollTop?: number
+  status?: AutomationHistoryListRequest['status']
+}
+
+export interface AutomationSidebarPreferences {
+  collapsed: boolean
+  width: number
+  activeSection: AutomationSidebarSection
+  sectionState: Partial<Record<AutomationSidebarSection, AutomationSidebarSectionPreferences>>
+}
+
+export interface AutomationSidebarPreferencesUpdateRequest {
+  preferences: Partial<AutomationSidebarPreferences>
+}
