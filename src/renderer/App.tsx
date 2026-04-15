@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
   HOME_STARTER_URL,
+  type RecorderStartRequest,
+  type RecorderStatus,
   type BrowserTabState,
   type DownloadState
 } from '../shared/browser'
@@ -20,6 +22,13 @@ function App() {
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false)
   const [commandPaletteQuery, setCommandPaletteQuery] = useState('')
   const [commandPaletteError, setCommandPaletteError] = useState('')
+  const [recorderStatus, setRecorderStatus] = useState<RecorderStatus>({
+    state: 'idle',
+    sessionId: null,
+    tabId: null,
+    reason: 'none',
+    startedAt: null
+  })
 
   const activeTab = useMemo(() => {
     return tabs.find((tab) => tab.id === activeTabId) ?? null
@@ -174,6 +183,50 @@ function App() {
     setIsCommandPaletteOpen(false)
   }, [])
 
+  const refreshRecorderStatus = useCallback(async (): Promise<void> => {
+    const status = await window.pathfinder.getAutomationRecordingStatus()
+    setRecorderStatus(status)
+  }, [])
+
+  const startRecordingFromPalette = useCallback(async (): Promise<void> => {
+    const request: RecorderStartRequest = activeTabId
+      ? { owner: 'command-palette', tabId: activeTabId }
+      : { owner: 'command-palette' }
+
+    const result = await window.pathfinder.startAutomationRecording(request)
+
+    setRecorderStatus((current) => ({
+      ...current,
+      state: result.state,
+      sessionId: result.sessionId,
+      tabId: result.tabId,
+      reason: result.reason,
+      startedAt: result.ok ? new Date().toISOString() : current.startedAt
+    }))
+
+    if (!result.ok) {
+      throw new Error(`Recording start failed: ${result.reason}`)
+    }
+  }, [activeTabId])
+
+  const stopRecordingFromPalette = useCallback(async (): Promise<void> => {
+    const result = await window.pathfinder.stopAutomationRecording(
+      recorderStatus.sessionId ? { sessionId: recorderStatus.sessionId } : undefined
+    )
+
+    setRecorderStatus((current) => ({
+      ...current,
+      state: result.state,
+      reason: result.reason,
+      sessionId: result.ok ? null : current.sessionId,
+      startedAt: result.ok ? null : current.startedAt
+    }))
+
+    if (!result.ok) {
+      throw new Error(`Recording stop failed: ${result.reason}`)
+    }
+  }, [recorderStatus.sessionId])
+
   const handleExecuteCommand = async (command: CommandPaletteCommand, query: string): Promise<void> => {
     try {
       await command.run(query)
@@ -195,8 +248,25 @@ function App() {
     forward: handleForward,
     reload: handleReload,
     stop: handleStop,
+    startRecording: startRecordingFromPalette,
+    stopRecording: stopRecordingFromPalette,
     activeTabId
   })
+
+  useEffect(() => {
+    const initialRefreshTimer = window.setTimeout(() => {
+      void refreshRecorderStatus()
+    }, 0)
+
+    const interval = window.setInterval(() => {
+      void refreshRecorderStatus()
+    }, 1000)
+
+    return () => {
+      window.clearTimeout(initialRefreshTimer)
+      window.clearInterval(interval)
+    }
+  }, [refreshRecorderStatus])
 
   useEffect(() => {
     const isEditableTarget = (target: EventTarget | null): boolean => {
@@ -244,6 +314,18 @@ function App() {
   return (
     <main className="browser-shell">
       <section className="browser-chrome">
+        <div className="browser-chrome__status-row">
+          <span
+            className={`recorder-indicator ${
+              recorderStatus.state === 'recording' ? 'recorder-indicator--active' : 'recorder-indicator--idle'
+            }`}
+            aria-live="polite"
+          >
+            {recorderStatus.state === 'recording'
+              ? `Recording actions (${recorderStatus.tabId ?? 'active tab'})`
+              : 'Recorder idle'}
+          </span>
+        </div>
         <BrowserTabStrip
           tabs={tabs}
           activeTabId={activeTabId}
