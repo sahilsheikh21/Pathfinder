@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto'
-import { chromium, type Browser } from 'playwright-core'
+import { chromium, type Browser, type Page } from 'playwright-core'
 import type {
   AutomationBridgeStatus,
   AutomationConnectRequest,
@@ -26,8 +26,20 @@ export interface AutomationCdpBridge {
   connect: (request: AutomationConnectRequest) => Promise<AutomationConnectResult>
   disconnect: (request: AutomationDisconnectRequest) => Promise<AutomationDisconnectResult>
   getStatus: () => AutomationBridgeStatus
+  withConnectedPage: <T>(
+    sessionId: string,
+    callback: (page: Page) => Promise<T>
+  ) => Promise<AutomationBridgePageExecutionResult<T>>
   shutdown: () => Promise<void>
 }
+
+export type AutomationBridgePageExecutionResult<T> =
+  | { ok: true; value: T }
+  | {
+      ok: false
+      reason: 'invalid-session' | 'missing-target'
+      message: string
+    }
 
 export const createAutomationCdpBridge = (
   options: AutomationCdpBridgeOptions
@@ -181,6 +193,72 @@ export const createAutomationCdpBridge = (
     }
   }
 
+  const withConnectedPage = async <T>(
+    currentSessionId: string,
+    callback: (page: Page) => Promise<T>
+  ): Promise<AutomationBridgePageExecutionResult<T>> => {
+    if (!sessionId || currentSessionId !== sessionId || state !== 'connected') {
+      return {
+        ok: false,
+        reason: 'invalid-session',
+        message: 'Automation bridge session is not connected for this request.'
+      }
+    }
+
+    if (!tabId) {
+      return {
+        ok: false,
+        reason: 'missing-target',
+        message: 'No bound tab exists for the current automation session.'
+      }
+    }
+
+    const target = options.resolveTarget(tabId)
+    if (!target || target.tabId !== tabId || target.webContentsId <= 0) {
+      return {
+        ok: false,
+        reason: 'missing-target',
+        message: 'Bound automation target is not available.'
+      }
+    }
+
+    if (!browser) {
+      return {
+        ok: false,
+        reason: 'missing-target',
+        message: 'Automation browser connection is not available.'
+      }
+    }
+
+    const pages = browser.contexts().flatMap((context) => context.pages())
+    if (pages.length === 0) {
+      return {
+        ok: false,
+        reason: 'missing-target',
+        message: 'No browser pages are attached to the current session.'
+      }
+    }
+
+    const page =
+      pages.find((candidate) => candidate.url() === target.url) ??
+      pages.find((candidate) => candidate.url() === target.url || !candidate.isClosed()) ??
+      pages[0] ??
+      null
+
+    if (!page) {
+      return {
+        ok: false,
+        reason: 'missing-target',
+        message: 'No active page is available for the bound target.'
+      }
+    }
+
+    return {
+      ok: true,
+      value: await callback(page)
+    }
+  }
+
   const shutdown = async (): Promise<void> => {
     await closeBrowser()
     setLock({
@@ -196,6 +274,7 @@ export const createAutomationCdpBridge = (
     connect,
     disconnect,
     getStatus,
+    withConnectedPage,
     shutdown
   }
 }
