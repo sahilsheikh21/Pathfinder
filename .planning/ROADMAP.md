@@ -22,7 +22,7 @@
 | 2 | Browser core | Deliver baseline browser runtime (tabs, nav, address bar, downloads) | BROW-01..BROW-05 | 5 |
 | 3 | Home starter page | Deliver custom new-tab experience | HOME-01..HOME-03 | 3 |
 | 4 | Command palette | 3/3 | Complete    | 2026-04-15 |
-| 5 | Quick search popup | 2/3 | In Progress|  |
+| 5 | Quick search popup | 3/3 | Complete   | 2026-04-15 |
 | 6 | CDP integration | Establish Playwright-Core + CDP bridge | AUTO-01 | 3 |
 | 7 | Action recording | Capture user actions into workflow schema | AUTO-02 | 3 |
 | 8 | Automation playback | Execute workflows with variable injection and guardrails | AUTO-03 | 3 |
@@ -107,12 +107,12 @@ Success criteria:
 ### Phase 5: Quick Search Popup
 Goal: Add secondary quick-search window flow for fast lookups.
 Requirements: QSR-01, QSR-02
-**Plans:** 2/3 plans executed
+**Plans:** 3/3 plans complete
 
 Plans:
 - [x] 05-01-PLAN.md - Define quick-search IPC contracts and renderer hotkey trigger wiring
 - [x] 05-02-PLAN.md - Implement reusable popup window lifecycle and main-process routing
-- [ ] 05-03-PLAN.md - Build popup renderer UX and selection-to-active-tab execution flow
+- [x] 05-03-PLAN.md - Build popup renderer UX and selection-to-active-tab execution flow
 
 Success criteria:
 1. Quick-search popup opens and closes via hotkey toggle and Escape.
