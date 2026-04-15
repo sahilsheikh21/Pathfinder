@@ -33,7 +33,7 @@
 
 ### AI and Agentic Features
 
-- [ ] **AI-01**: User can configure at least one cloud provider and one local provider for AI features.
+- [x] **AI-01**: User can configure at least one cloud provider and one local provider for AI features.
 - [ ] **AI-02**: User can ask AI about the current page and receive answers grounded in extracted page content.
 - [ ] **AI-03**: User can request AI-generated automation drafts from natural-language prompts.
 - [ ] **AI-04**: System requires explicit user approval before AI executes high-impact or irreversible actions.
@@ -45,7 +45,7 @@
 - [ ] **SET-01**: User can configure general browser settings (homepage, startup behavior, downloads path).
 - [ ] **SET-02**: User can configure appearance settings (theme mode, font size, sidebar position).
 - [ ] **SET-03**: User can configure privacy settings including clear-data controls and cookie preferences.
-- [ ] **SET-04**: User can configure LLM settings (provider, model, endpoint, key management).
+- [x] **SET-04**: User can configure LLM settings (provider, model, endpoint, key management).
 - [ ] **SET-05**: User can configure keyboard shortcuts for key browser and automation commands.
 - [ ] **REL-01**: User can install Pathfinder on Windows via signed installer package.
 - [ ] **REL-02**: Installed app can receive controlled updates with rollback-safe behavior.
@@ -90,7 +90,7 @@
 | AUTO-03 | Phase 8 | Complete |
 | AUTO-04 | Phase 9 | Pending |
 | AUTO-05 | Phase 9 | Pending |
-| AI-01 | Phase 10 | Pending |
+| AI-01 | Phase 10 | Complete |
 | AI-02 | Phase 11 | Pending |
 | AI-03 | Phase 12 | Pending |
 | AI-04 | Phase 13 | Pending |
@@ -99,7 +99,7 @@
 | SET-01 | Phase 14 | Pending |
 | SET-02 | Phase 15 | Pending |
 | SET-03 | Phase 14 | Pending |
-| SET-04 | Phase 10 | Pending |
+| SET-04 | Phase 10 | Complete |
 | SET-05 | Phase 15 | Pending |
 | REL-01 | Phase 16 | Pending |
 | REL-02 | Phase 16 | Pending |
