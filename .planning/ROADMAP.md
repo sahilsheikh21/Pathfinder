@@ -141,6 +141,14 @@ Success criteria:
 ### Phase 7: Action Recording
 Goal: Capture user interactions into reusable workflow definitions.
 Requirements: AUTO-02
+Status: Planned (2026-04-15)
+**Plans:** 3 plans
+
+Plans:
+- [ ] 07-01-PLAN.md - Define recorder workflow contracts and typed IPC/preload recorder surface
+- [ ] 07-02-PLAN.md - Implement main-process recorder manager with deterministic normalization and lifecycle wiring
+- [ ] 07-03-PLAN.md - Integrate command-palette recorder controls and persistent recording-state UI indicator
+
 Success criteria:
 1. Recorder captures click, type, navigate, and wait actions with deterministic ordering.
 2. Recorded workflows serialize into validated JSON schema.
@@ -232,4 +240,4 @@ Success criteria:
 
 ---
 *Roadmap created: 2026-04-14*
-*Last updated: 2026-04-15 after phase 6 planning*
+*Last updated: 2026-04-15 after phase 7 planning*
