@@ -25,7 +25,7 @@
 
 ### Automation Engine
 
-- [ ] **AUTO-01**: System can connect Playwright Core to Electron via CDP for controlled automation execution.
+- [x] **AUTO-01**: System can connect Playwright Core to Electron via CDP for controlled automation execution.
 - [ ] **AUTO-02**: User can record navigation, click, type, and wait actions into a structured JSON workflow.
 - [ ] **AUTO-03**: User can replay saved automation workflows with variable prompts and runtime validation.
 - [ ] **AUTO-04**: User can create, rename, delete, and tag saved automations in a local library.
@@ -85,7 +85,7 @@
 | CMD-02 | Phase 4 | Complete |
 | QSR-01 | Phase 5 | Complete |
 | QSR-02 | Phase 5 | Complete |
-| AUTO-01 | Phase 6 | Pending |
+| AUTO-01 | Phase 6 | Complete |
 | AUTO-02 | Phase 7 | Pending |
 | AUTO-03 | Phase 8 | Pending |
 | AUTO-04 | Phase 9 | Pending |
