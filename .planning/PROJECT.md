@@ -20,10 +20,12 @@ Users can reliably automate and delegate multi-step browser tasks from a single 
 - ✓ Command palette with deterministic fuzzy matching and keyboard-first execution — Phase 4
 - ✓ Quick search popup window with hotkey toggle and active-tab navigation routing — Phase 5
 - ✓ CDP automation substrate with typed connect/disconnect/status bridge and single-owner lock semantics — Phase 6
+- ✓ Action recording into typed, sequence-ordered workflow JSON with secure secret placeholders — Phase 7
+- ✓ Automation playback with deterministic preflight validation, variable prompting, and policy-based failure handling — Phase 8
 
 ### Active
 
-- [ ] Automation engine with record, save, and replay using structured JSON workflows
+- [ ] Automation library persistence, management, and run history surfaces for recorded/replayed workflows
 - [ ] Sidebar for saved automations, run history, and AI chat operations
 - [ ] LLM integration layer supporting cloud and local providers
 - [ ] Home starter page with search, quick links, and automation shortcuts
@@ -41,7 +43,7 @@ Users can reliably automate and delegate multi-step browser tasks from a single 
 
 The project is based on prior research comparing browser engine and framework options. Chromium was selected for embeddability and automation compatibility, with Electron chosen for deep browser control, CDP access, and ecosystem maturity. The product direction includes Comet-style agentic browsing, but implemented as explicit capabilities phased over milestones (core shell, automation, AI integration, polish/distribution).
 
-Current state: Phases 1 through 6 are complete. The project now has a runnable Electron browser shell with typed IPC, multi-tab runtime, omnibox routing, navigation controls, download telemetry, session restore, command palette, quick-search popup flow, and a managed CDP automation bridge substrate. The next focus is Phase 7 (action recording).
+Current state: Phases 1 through 8 are complete. The project now has a runnable Electron browser shell with typed IPC, multi-tab runtime, omnibox routing, navigation controls, download telemetry, session restore, command palette, quick-search popup flow, managed CDP automation bridge substrate, action recording, and deterministic automation playback with secure variable prompts. The next focus is Phase 9 (automation sidebar and history UX).
 
 ## Constraints
 
@@ -79,4 +81,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-15 after Phase 6 completion*
+*Last updated: 2026-04-15 after Phase 8 completion*
