@@ -26,7 +26,7 @@
 | 6 | CDP integration | 3/3 | Complete    | 2026-04-15 |
 | 7 | Action recording | 3/3 | Complete    | 2026-04-15 |
 | 8 | Automation playback | 3/3 | Complete    | 2026-04-15 |
-| 9 | Sidebar and history | Deliver automation library and execution history UX | AUTO-04, AUTO-05, SIDE-01 | 4 |
+| 9 | Sidebar and history | 4/4 | Complete | 2026-04-15 |
 | 10 | LLM adapter layer | Integrate cloud/local providers behind one contract | AI-01 | 3 |
 | 11 | Page analysis | AI Q&A on active page content | AI-02 | 3 |
 | 12 | AI automation generation | Prompt-to-workflow with explicit preview and command integration | AI-03, AI-05 | 3 |
@@ -173,6 +173,15 @@ Success criteria:
 ### Phase 9: Sidebar and History
 Goal: Provide operational UX for automation management.
 Requirements: AUTO-04, AUTO-05, SIDE-01
+Status: Complete (2026-04-15)
+**Plans:** 4/4 plans complete
+
+Plans:
+- [x] 09-01-PLAN.md - Define shared contracts and typed IPC/preload APIs for library/history/sidebar operations
+- [x] 09-02-PLAN.md - Implement main-process library/history persistence and playback lifecycle wiring
+- [x] 09-03-PLAN.md - Build sidebar shell, saved-library UI, and virtualized history renderer surfaces
+- [x] 09-04-PLAN.md - Add command-first sidebar actions and home/history cross-surface synchronization polish
+
 Success criteria:
 1. Sidebar shows saved automations with create/rename/delete/run controls.
 2. Execution history displays status, duration, and last failure reason.
@@ -248,4 +257,4 @@ Success criteria:
 
 ---
 *Roadmap created: 2026-04-14*
-*Last updated: 2026-04-15 after phase 8 execution*
+*Last updated: 2026-04-15 after phase 9 execution*

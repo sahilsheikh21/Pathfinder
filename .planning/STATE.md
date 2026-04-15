@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: Ready to execute
-last_updated: "2026-04-15T16:34:58.072Z"
+status: Phase 09 complete; ready for Phase 10
+last_updated: "2026-04-15T17:40:20.009Z"
 progress:
   total_phases: 16
-  completed_phases: 8
+  completed_phases: 9
   total_plans: 27
-  completed_plans: 23
-  percent: 85
+  completed_plans: 27
+  percent: 100
 ---
 
 # GSD State
@@ -19,12 +19,12 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-15)
 
 **Core value:** Users can reliably automate and delegate multi-step browser tasks from a single command-driven interface.
-**Current focus:** Phase 09 — sidebar-and-history
+**Current focus:** Phase 10 — llm-adapter-layer
 
 ## Workflow State
 
 - Current milestone: Milestone 1 (Core Browser Shell)
-- Current phase: 9
+- Current phase: 10
 - Total phases: 16
 - Phase 1 execution status: Complete (2 plans executed)
 - Phase 2 execution status: Complete (3 plans executed, verification passed)
@@ -34,9 +34,9 @@ See: .planning/PROJECT.md (updated 2026-04-15)
 - Phase 6 execution status: Complete (3 plans executed, review + verification passed)
 - Phase 7 execution status: Complete (3 plans executed, review + verification passed)
 - Phase 8 execution status: Complete (3 plans executed, review + verification passed)
-- Requirements status: 15 pending, 15 complete, 0 blocked
+- Requirements status: 12 pending, 18 complete, 0 blocked
 - Research status: Complete (.planning/research/SUMMARY.md and phase research)
-- Roadmap status: Phase 8 complete; Phase 9 ready for discuss/plan
+- Roadmap status: Phase 9 complete; Phase 10 ready for discuss/plan
 
 ## Notes
 
@@ -55,8 +55,10 @@ See: .planning/PROJECT.md (updated 2026-04-15)
 - Action recording implemented: typed workflow schema, main-process recorder lifecycle manager, command-palette start/stop controls, and persistent recording indicator.
 - Phase 8 execution artifacts now include 3 PLAN, 3 SUMMARY, 1 REVIEW, and 1 VERIFICATION file.
 - Automation playback implemented: typed playback contracts, deterministic main-process runner, CDP-bound playback execution, and command-first variable prompt UX.
-- Next recommended step: /gsd-discuss-phase 9.
+- Phase 9 execution artifacts now include 4 PLAN and 4 SUMMARY files.
+- Sidebar and history operations implemented: collapsible sidebar shell, automation library CRUD/tagging/run actions, virtualized run history, command-first sidebar controls, and history-backed Home recent automations.
+- Next recommended step: /gsd-discuss-phase 10.
 
 ---
 *Initialized: 2026-04-14*
-*Updated: 2026-04-15 after phase 8 execution*
+*Updated: 2026-04-15 after phase 9 execution*
