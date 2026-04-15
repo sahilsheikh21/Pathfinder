@@ -25,7 +25,7 @@
 | 5 | Quick search popup | 3/3 | Complete    | 2026-04-15 |
 | 6 | CDP integration | 3/3 | Complete    | 2026-04-15 |
 | 7 | Action recording | 3/3 | Complete    | 2026-04-15 |
-| 8 | Automation playback | Execute workflows with variable injection and guardrails | AUTO-03 | 3 |
+| 8 | Automation playback | 0/3 | Planned    |  |
 | 9 | Sidebar and history | Deliver automation library and execution history UX | AUTO-04, AUTO-05, SIDE-01 | 4 |
 | 10 | LLM adapter layer | Integrate cloud/local providers behind one contract | AI-01 | 3 |
 | 11 | Page analysis | AI Q&A on active page content | AI-02 | 3 |
