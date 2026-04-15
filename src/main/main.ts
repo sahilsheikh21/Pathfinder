@@ -521,7 +521,8 @@ function registerIpcHandlers(): void {
 
     const result = await automationPlayback.start({
       source: { kind: 'file', path: resolvedPath },
-      ...(request.tabId ? { tabId: request.tabId } : {})
+      ...(request.tabId ? { tabId: request.tabId } : {}),
+      ...(request.variables ? { variables: request.variables } : {})
     })
 
     if (result.ok && result.runId) {

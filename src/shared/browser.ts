@@ -422,6 +422,7 @@ export interface AutomationHistoryClearRequest {
 export interface AutomationHistoryRerunRequest {
   id: string
   tabId?: string
+  variables?: Record<string, string>
 }
 
 export type AutomationSidebarSection = 'library' | 'history' | 'ai-chat'
