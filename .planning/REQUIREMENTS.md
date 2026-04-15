@@ -18,8 +18,8 @@
 - [x] **HOME-01**: User sees a custom home starter page on new tab with greeting and current date.
 - [x] **HOME-02**: User can search the web from the home page using the configured default search engine.
 - [x] **HOME-03**: User can launch quick links and recently used automations directly from the home page.
-- [ ] **CMD-01**: User can open a command palette via keyboard shortcuts and execute browser commands.
-- [ ] **CMD-02**: User can find commands using fuzzy search with command descriptions and argument hints.
+- [x] **CMD-01**: User can open a command palette via keyboard shortcuts and execute browser commands.
+- [x] **CMD-02**: User can find commands using fuzzy search with command descriptions and argument hints.
 - [ ] **QSR-01**: User can toggle a quick-search popup window with a hotkey and dismiss it with Escape.
 - [ ] **QSR-02**: User can open quick-search results in the active browser tab.
 
@@ -81,8 +81,8 @@
 | HOME-01 | Phase 3 | Complete |
 | HOME-02 | Phase 3 | Complete |
 | HOME-03 | Phase 3 | Complete |
-| CMD-01 | Phase 4 | Pending |
-| CMD-02 | Phase 4 | Pending |
+| CMD-01 | Phase 4 | Complete |
+| CMD-02 | Phase 4 | Complete |
 | QSR-01 | Phase 5 | Pending |
 | QSR-02 | Phase 5 | Pending |
 | AUTO-01 | Phase 6 | Pending |
@@ -111,4 +111,4 @@
 
 ---
 *Requirements defined: 2026-04-14*
-*Last updated: 2026-04-15 after phase 3 execution*
+*Last updated: 2026-04-15 after phase 4 execution*
