@@ -26,6 +26,8 @@ export interface BrowserCommandDeps {
   stop: () => Promise<void>
   startRecording: () => Promise<void>
   stopRecording: () => Promise<void>
+  startPlayback?: (workflowPath: string) => Promise<void>
+  cancelPlayback?: () => Promise<void>
   activeTabId: string | null
 }
 
@@ -234,6 +236,34 @@ export const createBrowserCommands = (deps: BrowserCommandDeps): CommandPaletteC
       keywords: ['automation', 'record', 'stop', 'workflow'],
       run: async () => {
         await deps.stopRecording()
+      }
+    },
+    {
+      id: 'automation.playback.run',
+      title: 'Automation: Run Playback Workflow',
+      description: 'Run a workflow JSON file in the active tab context.',
+      argumentHint: '<workflow-json-path>',
+      keywords: ['automation', 'playback', 'run', 'workflow', 'json'],
+      run: async (input: string) => {
+        const workflowPath = requireInput(input, 'Provide a workflow JSON path.')
+        if (!deps.startPlayback) {
+          throw new Error('Playback run is unavailable.')
+        }
+
+        await deps.startPlayback(workflowPath)
+      }
+    },
+    {
+      id: 'automation.playback.cancel',
+      title: 'Automation: Cancel Playback',
+      description: 'Cancel the active playback run.',
+      keywords: ['automation', 'playback', 'cancel', 'stop'],
+      run: async () => {
+        if (!deps.cancelPlayback) {
+          throw new Error('Playback cancel is unavailable.')
+        }
+
+        await deps.cancelPlayback()
       }
     }
   ]
