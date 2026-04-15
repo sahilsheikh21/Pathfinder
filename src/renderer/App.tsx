@@ -1,7 +1,14 @@
 import { useEffect, useMemo, useState } from 'react'
-import type { BrowserTabState, DownloadState } from '../shared/browser'
+import {
+  HOME_STARTER_URL,
+  type BrowserTabState,
+  type DownloadState,
+  type QuickLink,
+  type RecentAutomationPreview
+} from '../shared/browser'
 import BrowserTabStrip from './components/BrowserTabStrip'
 import DownloadShelf from './components/DownloadShelf'
+import HomeStarterPage from './components/HomeStarterPage'
 import NavigationBar from './components/NavigationBar'
 import './styles/global.css'
 
@@ -9,10 +16,15 @@ function App() {
   const [tabs, setTabs] = useState<BrowserTabState[]>([])
   const [activeTabId, setActiveTabId] = useState<string | null>(null)
   const [downloads, setDownloads] = useState<DownloadState[]>([])
+  const [quickLinks, setQuickLinks] = useState<QuickLink[]>([])
+  const [recentAutomations, setRecentAutomations] = useState<RecentAutomationPreview[]>([])
+  const [homeDraftQuery, setHomeDraftQuery] = useState('')
 
   const activeTab = useMemo(() => {
     return tabs.find((tab) => tab.id === activeTabId) ?? null
   }, [activeTabId, tabs])
+
+  const isHomeTab = activeTab?.url === HOME_STARTER_URL
 
   const syncTabs = (nextTabs: BrowserTabState[]): void => {
     setTabs(nextTabs)
@@ -138,6 +150,24 @@ function App() {
     syncTabs(nextTabs)
   }
 
+  useEffect(() => {
+    if (!isHomeTab) {
+      return
+    }
+
+    window.pathfinder.listQuickLinks().then(setQuickLinks).catch(() => {
+      setQuickLinks([])
+    })
+
+    window.pathfinder.listRecentAutomations().then(setRecentAutomations).catch(() => {
+      setRecentAutomations([])
+    })
+  }, [isHomeTab])
+
+  const handleHomeSearchSubmit = (query: string): void => {
+    setHomeDraftQuery(query)
+  }
+
   return (
     <main className="browser-shell">
       <section className="browser-chrome">
@@ -159,7 +189,18 @@ function App() {
         />
       </section>
 
-      <section className="browser-viewport" aria-label="Active tab viewport" />
+      <section className="browser-viewport" aria-label="Active tab viewport">
+        {isHomeTab ? (
+          <HomeStarterPage
+            activeTabId={activeTabId}
+            draftQueryValue={homeDraftQuery}
+            onDraftQueryChange={setHomeDraftQuery}
+            onSearchSubmit={handleHomeSearchSubmit}
+            quickLinks={quickLinks}
+            recentAutomations={recentAutomations}
+          />
+        ) : null}
+      </section>
       <DownloadShelf downloads={downloads} />
     </main>
   )

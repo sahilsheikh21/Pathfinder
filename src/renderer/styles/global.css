@@ -161,6 +161,98 @@ input {
   padding-top: 96px;
 }
 
+.home-starter {
+  display: grid;
+  gap: var(--pf-space-16);
+  max-width: 960px;
+  margin: 0 auto;
+  padding: var(--pf-space-24) var(--pf-space-16) var(--pf-space-16);
+}
+
+.home-starter__header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--pf-space-8);
+}
+
+.home-starter__greeting,
+.home-starter__date {
+  margin: 0;
+  color: var(--pf-text-secondary);
+  font-size: 13px;
+}
+
+.home-starter__search {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: var(--pf-space-8);
+  align-items: center;
+}
+
+.home-starter__search input {
+  min-height: 46px;
+  border: 1px solid var(--pf-border-subtle);
+  border-radius: var(--pf-radius-pill);
+  background: var(--pf-bg-elevated);
+  color: var(--pf-text-primary);
+  padding: 0 var(--pf-space-16);
+}
+
+.home-starter__search button {
+  min-height: 40px;
+  padding: 0 var(--pf-space-16);
+  border: 1px solid color-mix(in srgb, var(--pf-accent-primary) 52%, var(--pf-border-subtle));
+  border-radius: var(--pf-radius-pill);
+  background: color-mix(in srgb, var(--pf-accent-primary) 14%, var(--pf-bg-elevated));
+  color: var(--pf-text-primary);
+  cursor: pointer;
+}
+
+.home-starter__quick-links {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--pf-space-12);
+}
+
+.home-starter__recent-automations {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--pf-space-12);
+}
+
+.home-starter__card {
+  display: grid;
+  gap: var(--pf-space-4);
+  padding: var(--pf-space-12);
+  border: 1px solid var(--pf-border-subtle);
+  border-radius: var(--pf-radius-md);
+  background: var(--pf-bg-elevated);
+}
+
+.home-starter__card h3,
+.home-starter__card p {
+  margin: 0;
+}
+
+@media (max-width: 880px) {
+  .home-starter__quick-links,
+  .home-starter__recent-automations {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 560px) {
+  .home-starter {
+    padding: var(--pf-space-16) var(--pf-space-12);
+  }
+
+  .home-starter__quick-links,
+  .home-starter__recent-automations {
+    grid-template-columns: 1fr;
+  }
+}
+
 .download-shelf {
   position: fixed;
   right: var(--pf-space-12);
