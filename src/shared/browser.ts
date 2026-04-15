@@ -217,6 +217,110 @@ export interface RecorderStatus {
   startedAt: string | null
 }
 
+export type AutomationPlaybackFailurePolicy = 'stop-on-error' | 'continue-on-error'
+
+export type AutomationPlaybackRunState =
+  | 'idle'
+  | 'starting'
+  | 'running'
+  | 'completed'
+  | 'failed'
+  | 'cancelled'
+
+export type AutomationPlaybackStartReason =
+  | 'none'
+  | 'busy'
+  | 'invalid-workflow'
+  | 'missing-variables'
+  | 'invalid-session'
+  | 'missing-target'
+  | 'already-running'
+  | 'failed'
+
+export type AutomationPlaybackCancelReason = 'none' | 'not-running' | 'cancelled' | 'failed'
+
+export type AutomationPlaybackFailureReason =
+  | 'invalid-workflow'
+  | 'missing-variables'
+  | 'busy'
+  | 'invalid-session'
+  | 'missing-target'
+  | 'target-lost'
+  | 'timeout'
+  | 'step-failed'
+  | 'cancelled'
+  | 'internal-error'
+
+export interface AutomationPlaybackSource {
+  kind: 'file'
+  path: string
+}
+
+export interface AutomationPlaybackStartRequest {
+  source: AutomationPlaybackSource
+  tabId?: string
+  variables?: Record<string, string>
+  policy?: AutomationPlaybackFailurePolicy
+  defaultTimeoutMs?: number
+}
+
+export interface AutomationPlaybackVariablePrompt {
+  name: string
+  prompt: string
+  secret: boolean
+}
+
+export interface AutomationPlaybackStepFailure {
+  stepId: string
+  seq: number
+  action: RecorderAction
+  reason: AutomationPlaybackFailureReason
+  message: string
+}
+
+export interface AutomationPlaybackRunSummary {
+  totalSteps: number
+  succeededSteps: number
+  failedSteps: number
+  failures: AutomationPlaybackStepFailure[]
+  startedAt: string
+  finishedAt: string
+}
+
+export interface AutomationPlaybackStartResult {
+  ok: boolean
+  runId: string | null
+  state: AutomationPlaybackRunState
+  reason: AutomationPlaybackStartReason
+  requiredVariables?: AutomationPlaybackVariablePrompt[]
+  summary?: AutomationPlaybackRunSummary
+  failure?: AutomationPlaybackStepFailure
+  message?: string
+}
+
+export interface AutomationPlaybackStatus {
+  state: AutomationPlaybackRunState
+  runId: string | null
+  source: AutomationPlaybackSource | null
+  tabId: string | null
+  policy: AutomationPlaybackFailurePolicy
+  startedAt: string | null
+  finishedAt: string | null
+  summary: AutomationPlaybackRunSummary | null
+  failure: AutomationPlaybackStepFailure | null
+}
+
+export interface AutomationPlaybackCancelRequest {
+  runId?: string
+}
+
+export interface AutomationPlaybackCancelResult {
+  ok: boolean
+  state: AutomationPlaybackRunState
+  reason: AutomationPlaybackCancelReason
+  message?: string
+}
+
 export interface QuickLink {
   id: string
   title: string
