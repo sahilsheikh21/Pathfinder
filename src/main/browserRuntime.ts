@@ -163,6 +163,22 @@ export class BrowserRuntime {
     return this.getTabSnapshotList()
   }
 
+  navigateActiveOrCreate(target: string): BrowserTabState[] {
+    const normalizedTarget = this.normalizeNavigationTarget(target)
+    if (!normalizedTarget) {
+      return this.getTabSnapshotList()
+    }
+
+    if (this.activeTabId && this.tabs.has(this.activeTabId)) {
+      return this.navigate({
+        tabId: this.activeTabId,
+        input: normalizedTarget
+      })
+    }
+
+    return this.createTab(normalizedTarget)
+  }
+
   back(tabId: string): BrowserTabState[] {
     const tab = this.tabs.get(tabId)
     if (tab?.view.webContents.canGoBack()) {

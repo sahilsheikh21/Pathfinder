@@ -3,6 +3,10 @@ import { resolve } from 'node:path'
 import { BrowserRuntime } from './browserRuntime'
 import { DownloadManager } from './downloadManager'
 import { createHomeStore, type HomeStore } from './homeStore'
+import {
+  createQuickSearchWindowManager,
+  type QuickSearchWindowManager
+} from './quickSearchWindow'
 import { loadSessionSnapshot, saveSessionSnapshot } from './sessionStore'
 import { IPC_CHANNELS, type AppPlatformResponse, type AppVersionResponse } from '../shared/ipc'
 import { DEFAULT_HOME_SEARCH_TEMPLATE } from '../shared/browser'
@@ -10,6 +14,7 @@ import { DEFAULT_HOME_SEARCH_TEMPLATE } from '../shared/browser'
 let browserRuntime: BrowserRuntime | null = null
 let downloadManager: DownloadManager | null = null
 let homeStore: HomeStore | null = null
+let quickSearchWindowManager: QuickSearchWindowManager | null = null
 
 function registerIpcHandlers(): void {
   ipcMain.handle(IPC_CHANNELS.appGetVersion, (): AppVersionResponse => ({
@@ -38,6 +43,24 @@ function registerIpcHandlers(): void {
   ipcMain.handle(IPC_CHANNELS.browserReload, (_event, tabId: string) => browserRuntime?.reload(tabId) ?? [])
   ipcMain.handle(IPC_CHANNELS.browserStop, (_event, tabId: string) => browserRuntime?.stop(tabId) ?? [])
   ipcMain.handle(IPC_CHANNELS.browserGetDownloads, () => downloadManager?.listDownloads() ?? [])
+  ipcMain.handle(IPC_CHANNELS.quickSearchToggle, async () => {
+    await quickSearchWindowManager?.toggle()
+  })
+  ipcMain.handle(IPC_CHANNELS.quickSearchOpen, async (_event, request) => {
+    await quickSearchWindowManager?.open(request)
+  })
+  ipcMain.handle(IPC_CHANNELS.quickSearchClose, () => {
+    quickSearchWindowManager?.close()
+  })
+  ipcMain.handle(IPC_CHANNELS.quickSearchSubmit, (_event, request) => {
+    const target = typeof request?.target === 'string' ? request.target.trim() : ''
+    if (!target) {
+      return
+    }
+
+    browserRuntime?.navigateActiveOrCreate(target)
+    quickSearchWindowManager?.close()
+  })
   ipcMain.handle(IPC_CHANNELS.homeGetPreferences, () =>
     homeStore?.getHomePreferences() ?? { searchTemplate: DEFAULT_HOME_SEARCH_TEMPLATE }
   )
@@ -74,6 +97,14 @@ function createWindow(): void {
 
   mainWindow.once('ready-to-show', () => {
     mainWindow.show()
+  })
+
+  quickSearchWindowManager = createQuickSearchWindowManager({
+    preloadPath: resolve(__dirname, '../preload/index.js'),
+    rendererIndexPath: resolve(__dirname, '../renderer/index.html'),
+    ...(process.env.VITE_DEV_SERVER_URL
+      ? { devServerUrl: process.env.VITE_DEV_SERVER_URL }
+      : {})
   })
 
   browserRuntime = new BrowserRuntime(mainWindow, (payload) => {
@@ -124,6 +155,8 @@ app.on('window-all-closed', () => {
 })
 
 app.on('before-quit', () => {
+  quickSearchWindowManager?.destroy()
+
   if (browserRuntime) {
     saveSessionSnapshot(app.getPath('userData'), browserRuntime.exportSnapshot())
   }
