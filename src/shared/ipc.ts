@@ -1,4 +1,9 @@
 import type {
+  AutomationPlaybackCancelRequest,
+  AutomationPlaybackCancelResult,
+  AutomationPlaybackStartRequest,
+  AutomationPlaybackStartResult,
+  AutomationPlaybackStatus,
   AutomationBridgeStatus,
   AutomationConnectRequest,
   AutomationConnectResult,
@@ -46,6 +51,9 @@ export const IPC_CHANNELS = {
   automationRecordStart: 'automation:record:start',
   automationRecordStop: 'automation:record:stop',
   automationRecordStatus: 'automation:record:status',
+  automationPlaybackStart: 'automation:playback:start',
+  automationPlaybackStatus: 'automation:playback:status',
+  automationPlaybackCancel: 'automation:playback:cancel',
   homeGetPreferences: 'home:getPreferences',
   homeSavePreferences: 'home:savePreferences',
   homeListQuickLinks: 'home:listQuickLinks',
@@ -91,6 +99,13 @@ export interface PathfinderApi {
   startAutomationRecording: (request: RecorderStartRequest) => Promise<RecorderStartResult>
   stopAutomationRecording: (request?: RecorderStopRequest) => Promise<RecorderStopResult>
   getAutomationRecordingStatus: () => Promise<RecorderStatus>
+  startAutomationPlayback: (
+    request: AutomationPlaybackStartRequest
+  ) => Promise<AutomationPlaybackStartResult>
+  getAutomationPlaybackStatus: () => Promise<AutomationPlaybackStatus>
+  cancelAutomationPlayback: (
+    request?: AutomationPlaybackCancelRequest
+  ) => Promise<AutomationPlaybackCancelResult>
   getHomePreferences: () => Promise<HomePreferences>
   saveHomePreferences: (preferences: HomePreferences) => Promise<HomePreferences>
   listQuickLinks: () => Promise<QuickLink[]>

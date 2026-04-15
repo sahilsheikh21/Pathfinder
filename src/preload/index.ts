@@ -45,6 +45,12 @@ const api: PathfinderApi = {
     ipcRenderer.invoke(IPC_CHANNELS.automationRecordStop, request),
   getAutomationRecordingStatus: async () =>
     ipcRenderer.invoke(IPC_CHANNELS.automationRecordStatus),
+  startAutomationPlayback: async (request) =>
+    ipcRenderer.invoke(IPC_CHANNELS.automationPlaybackStart, request),
+  getAutomationPlaybackStatus: async () =>
+    ipcRenderer.invoke(IPC_CHANNELS.automationPlaybackStatus),
+  cancelAutomationPlayback: async (request) =>
+    ipcRenderer.invoke(IPC_CHANNELS.automationPlaybackCancel, request),
   getHomePreferences: async () => ipcRenderer.invoke(IPC_CHANNELS.homeGetPreferences),
   saveHomePreferences: async (preferences) => ipcRenderer.invoke(IPC_CHANNELS.homeSavePreferences, preferences),
   listQuickLinks: async () => ipcRenderer.invoke(IPC_CHANNELS.homeListQuickLinks),
