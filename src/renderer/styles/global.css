@@ -253,6 +253,30 @@ input {
   gap: var(--pf-space-12);
 }
 
+.home-starter__recent-empty {
+  grid-column: 1 / -1;
+  margin: 0;
+  padding: var(--pf-space-8) var(--pf-space-12);
+  border: 1px dashed color-mix(in srgb, var(--pf-border-subtle) 80%, transparent);
+  border-radius: var(--pf-radius-md);
+  color: var(--pf-text-secondary);
+  font-size: 12px;
+  background: color-mix(in srgb, var(--pf-bg-elevated) 78%, transparent);
+}
+
+.home-starter__recent-slot {
+  min-height: 68px;
+  display: grid;
+  place-items: center;
+  padding: var(--pf-space-10);
+  border: 1px dashed color-mix(in srgb, var(--pf-border-subtle) 88%, transparent);
+  border-radius: var(--pf-radius-md);
+  background: color-mix(in srgb, var(--pf-bg-elevated) 64%, transparent);
+  color: var(--pf-text-secondary);
+  font-size: 12px;
+  user-select: none;
+}
+
 .home-starter__card {
   display: grid;
   gap: var(--pf-space-4);

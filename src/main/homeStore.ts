@@ -217,7 +217,9 @@ export const createHomeStore = (userDataPath: string): HomeStore => {
       return sortQuickLinks(nextData.quickLinks)
     },
     listRecentAutomations: () => {
-      return []
+      // HOME-03 contract: this will map most-recently executed automation runs in a later phase.
+      const recentAutomations: RecentAutomationPreview[] = []
+      return recentAutomations
     }
   }
 }

@@ -2,8 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import {
   HOME_STARTER_URL,
   type BrowserTabState,
-  type DownloadState,
-  type RecentAutomationPreview
+  type DownloadState
 } from '../shared/browser'
 import BrowserTabStrip from './components/BrowserTabStrip'
 import DownloadShelf from './components/DownloadShelf'
@@ -15,7 +14,6 @@ function App() {
   const [tabs, setTabs] = useState<BrowserTabState[]>([])
   const [activeTabId, setActiveTabId] = useState<string | null>(null)
   const [downloads, setDownloads] = useState<DownloadState[]>([])
-  const [recentAutomations, setRecentAutomations] = useState<RecentAutomationPreview[]>([])
   const [homeDraftByTabId, setHomeDraftByTabId] = useState<Record<string, string>>({})
 
   const activeTab = useMemo(() => {
@@ -148,16 +146,6 @@ function App() {
     syncTabs(nextTabs)
   }
 
-  useEffect(() => {
-    if (!isHomeTab) {
-      return
-    }
-
-    window.pathfinder.listRecentAutomations().then(setRecentAutomations).catch(() => {
-      setRecentAutomations([])
-    })
-  }, [isHomeTab])
-
   const homeDraftQuery = activeTabId ? (homeDraftByTabId[activeTabId] ?? '') : ''
 
   const handleHomeDraftQueryChange = (value: string): void => {
@@ -199,7 +187,6 @@ function App() {
             draftQueryValue={homeDraftQuery}
             onDraftQueryChange={handleHomeDraftQueryChange}
             onNavigate={handleNavigate}
-            recentAutomations={recentAutomations}
           />
         ) : null}
       </section>

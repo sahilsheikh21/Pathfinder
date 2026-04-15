@@ -10,17 +10,16 @@ interface HomeStarterPageProps {
   draftQueryValue: string
   onDraftQueryChange: (value: string) => void
   onNavigate: (target: string) => void
-  recentAutomations: RecentAutomationPreview[]
 }
 
 function HomeStarterPage({
   activeTabId,
   draftQueryValue,
   onDraftQueryChange,
-  onNavigate,
-  recentAutomations
+  onNavigate
 }: HomeStarterPageProps) {
   const [quickLinks, setQuickLinks] = useState<QuickLink[]>([])
+  const [recentAutomations, setRecentAutomations] = useState<RecentAutomationPreview[]>([])
   const [linkTitle, setLinkTitle] = useState('')
   const [linkUrl, setLinkUrl] = useState('')
   const [hint, setHint] = useState('')
@@ -56,19 +55,27 @@ function HomeStarterPage({
     setHint('')
   }
 
-  const loadQuickLinks = async (): Promise<void> => {
-    const listedQuickLinks = await window.pathfinder.listQuickLinks()
-    setQuickLinks(listedQuickLinks.slice(0, 6))
-  }
-
   useEffect(() => {
     if (!activeTabId) {
       return
     }
 
-    loadQuickLinks().catch(() => {
-      setQuickLinks([])
-    })
+    window.pathfinder
+      .listQuickLinks()
+      .then((listedQuickLinks) => {
+        setQuickLinks(listedQuickLinks.slice(0, 6))
+      })
+      .catch(() => {
+        setQuickLinks([])
+      })
+
+    // Placeholder contract for HOME-03: this list is sourced from execution history in a later phase.
+    window.pathfinder
+      .listRecentAutomations()
+      .then(setRecentAutomations)
+      .catch(() => {
+        setRecentAutomations([])
+      })
   }, [activeTabId])
 
   const handleAddLink = async (event: FormEvent<HTMLFormElement>): Promise<void> => {
@@ -168,10 +175,10 @@ function HomeStarterPage({
       </section>
 
       <section className="home-starter__recent-automations" aria-label="Recent automations">
-        {recentAutomations.slice(0, 3).map((automation) => (
-          <article key={automation.id} className="home-starter__card">
-            <h3>{automation.name}</h3>
-            <p>{automation.lastRunAt ?? 'Never run'}</p>
+        {recentAutomations.length === 0 ? <p className="home-starter__recent-empty">No recent automations yet.</p> : null}
+        {Array.from({ length: 3 }).map((_, index) => (
+          <article key={`recent-slot-${index}`} className="home-starter__recent-slot" aria-disabled="true">
+            {recentAutomations[index]?.name ?? 'Reserved slot'}
           </article>
         ))}
       </section>
