@@ -119,6 +119,8 @@ function App() {
   const [historyScrollTop, setHistoryScrollTop] = useState(0)
   const [playbackPromptVariables, setPlaybackPromptVariables] = useState<AutomationPlaybackVariablePrompt[]>([])
   const [pendingPlaybackRequest, setPendingPlaybackRequest] = useState<PendingPlaybackRequest | null>(null)
+  const [recentAutomationsVersion, setRecentAutomationsVersion] = useState(0)
+  const [lastTerminalPlaybackKey, setLastTerminalPlaybackKey] = useState<string | null>(null)
 
   const activeTab = useMemo(() => {
     return tabs.find((tab) => tab.id === activeTabId) ?? null
@@ -188,7 +190,19 @@ function App() {
   const refreshPlaybackStatus = useCallback(async (): Promise<void> => {
     const status = await window.pathfinder.getAutomationPlaybackStatus()
     setPlaybackStatus(status)
-  }, [])
+
+    if (
+      status.state === 'completed' ||
+      status.state === 'failed' ||
+      status.state === 'cancelled'
+    ) {
+      const terminalKey = `${status.runId ?? 'unknown'}:${status.finishedAt ?? status.state}`
+      if (lastTerminalPlaybackKey !== terminalKey) {
+        setLastTerminalPlaybackKey(terminalKey)
+        setRecentAutomationsVersion((current) => current + 1)
+      }
+    }
+  }, [lastTerminalPlaybackKey])
 
   const handlePlaybackStartResult = useCallback(
     async (
@@ -198,6 +212,7 @@ function App() {
       if (result.ok) {
         setPlaybackPromptVariables([])
         setPendingPlaybackRequest(null)
+        setRecentAutomationsVersion((current) => current + 1)
         await refreshPlaybackStatus()
         await refreshLibrary()
         await refreshHistory()
@@ -613,6 +628,7 @@ function App() {
 
     setPlaybackPromptVariables([])
     setPendingPlaybackRequest(null)
+    setRecentAutomationsVersion((current) => current + 1)
     await refreshPlaybackStatus()
     await refreshHistory()
   }, [refreshHistory, refreshPlaybackStatus])
@@ -631,12 +647,58 @@ function App() {
   const removeHistoryEntry = useCallback(async (entry: AutomationHistoryEntry): Promise<void> => {
     const result = await window.pathfinder.automationHistoryRemove({ id: entry.id })
     setHistoryEntries(result.entries)
+    setRecentAutomationsVersion((current) => current + 1)
   }, [])
 
   const clearHistoryEntries = useCallback(async (): Promise<void> => {
     const result = await window.pathfinder.automationHistoryClear({ preserveRunning: true })
     setHistoryEntries(result.entries)
+    setRecentAutomationsVersion((current) => current + 1)
   }, [])
+
+  const toggleSidebarFromCommand = useCallback(async (): Promise<void> => {
+    if (isOverlayMode) {
+      setIsOverlayOpen((current) => !current)
+      return
+    }
+
+    persistSidebarPreferences({ collapsed: !sidebarPreferences.collapsed })
+  }, [isOverlayMode, persistSidebarPreferences, sidebarPreferences.collapsed])
+
+  const openSidebarSectionFromCommand = useCallback(
+    async (section: AutomationSidebarSection): Promise<void> => {
+      if (isOverlayMode) {
+        setIsOverlayOpen(true)
+      }
+
+      persistSidebarPreferences({
+        collapsed: false,
+        activeSection: section
+      })
+    },
+    [isOverlayMode, persistSidebarPreferences]
+  )
+
+  const runRecentAutomation = useCallback(
+    async (preview: { id: string; canRun?: boolean; name: string }): Promise<void> => {
+      if (!preview.canRun) {
+        return
+      }
+
+      const result = await window.pathfinder.automationLibraryRun({
+        id: preview.id,
+        sourceLabel: 'home',
+        ...(activeTabId ? { tabId: activeTabId } : {})
+      })
+
+      await handlePlaybackStartResult(result, {
+        kind: 'library',
+        libraryId: preview.id,
+        label: preview.name
+      })
+    },
+    [activeTabId, handlePlaybackStartResult]
+  )
 
   const handleExecuteCommand = async (command: CommandPaletteCommand, query: string): Promise<void> => {
     try {
@@ -663,6 +725,9 @@ function App() {
     stopRecording: stopRecordingFromPalette,
     startPlayback: startPlaybackFromPalette,
     cancelPlayback: cancelPlaybackFromPalette,
+    toggleSidebar: toggleSidebarFromCommand,
+    openSidebarLibrary: async () => openSidebarSectionFromCommand('library'),
+    openSidebarHistory: async () => openSidebarSectionFromCommand('history'),
     activeTabId
   })
 
@@ -914,6 +979,8 @@ function App() {
               draftQueryValue={homeDraftQuery}
               onDraftQueryChange={handleHomeDraftQueryChange}
               onNavigate={handleNavigate}
+              recentRefreshToken={recentAutomationsVersion}
+              onRunRecentAutomation={runRecentAutomation}
             />
           ) : null}
         </section>

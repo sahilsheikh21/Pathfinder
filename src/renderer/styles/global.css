@@ -992,16 +992,73 @@ input {
 }
 
 .home-starter__recent-slot {
-  min-height: 68px;
+  min-height: 108px;
   display: grid;
-  place-items: center;
+  gap: var(--pf-space-6);
+  align-content: start;
   padding: var(--pf-space-10);
   border: 1px dashed color-mix(in srgb, var(--pf-border-subtle) 88%, transparent);
   border-radius: var(--pf-radius-md);
   background: color-mix(in srgb, var(--pf-bg-elevated) 64%, transparent);
-  color: var(--pf-text-secondary);
+  color: var(--pf-text-primary);
   font-size: 12px;
-  user-select: none;
+}
+
+.home-starter__recent-slot h3,
+.home-starter__recent-slot p {
+  margin: 0;
+}
+
+.home-starter__recent-slot p {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--pf-space-6);
+  color: var(--pf-text-secondary);
+}
+
+.home-starter__recent-slot button {
+  min-height: 28px;
+  width: max-content;
+  padding: 0 var(--pf-space-10);
+  border: 1px solid var(--pf-border-subtle);
+  border-radius: var(--pf-radius-pill);
+  background: var(--pf-bg-elevated);
+  color: var(--pf-text-primary);
+  cursor: pointer;
+}
+
+.home-starter__recent-slot button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.home-starter__recent-slot--deleted {
+  border-color: color-mix(in srgb, #d84f4f 52%, var(--pf-border-subtle));
+}
+
+.home-starter__recent-status {
+  text-transform: capitalize;
+  border: 1px solid var(--pf-border-subtle);
+  border-radius: var(--pf-radius-pill);
+  padding: 0 var(--pf-space-8);
+  font-size: 11px;
+}
+
+.home-starter__recent-status--running {
+  border-color: color-mix(in srgb, #0a84ff 52%, var(--pf-border-subtle));
+}
+
+.home-starter__recent-status--success {
+  border-color: color-mix(in srgb, #3e9d6f 52%, var(--pf-border-subtle));
+}
+
+.home-starter__recent-status--failed,
+.home-starter__recent-status--cancelled {
+  border-color: color-mix(in srgb, #d84f4f 52%, var(--pf-border-subtle));
+}
+
+.home-starter__recent-duration {
+  color: var(--pf-text-secondary);
 }
 
 .home-starter__card {
