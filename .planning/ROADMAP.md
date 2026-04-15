@@ -25,7 +25,7 @@
 | 5 | Quick search popup | 3/3 | Complete    | 2026-04-15 |
 | 6 | CDP integration | 3/3 | Complete    | 2026-04-15 |
 | 7 | Action recording | 3/3 | Complete    | 2026-04-15 |
-| 8 | Automation playback | 0/3 | Planned    |  |
+| 8 | Automation playback | 3/3 | Complete    | 2026-04-15 |
 | 9 | Sidebar and history | Deliver automation library and execution history UX | AUTO-04, AUTO-05, SIDE-01 | 4 |
 | 10 | LLM adapter layer | Integrate cloud/local providers behind one contract | AI-01 | 3 |
 | 11 | Page analysis | AI Q&A on active page content | AI-02 | 3 |
@@ -157,6 +157,14 @@ Success criteria:
 ### Phase 8: Automation Playback
 Goal: Execute saved workflow JSON reliably.
 Requirements: AUTO-03
+Status: Complete (2026-04-15)
+**Plans:** 3/3 plans complete
+
+Plans:
+- [x] 08-01-PLAN.md - Define playback contracts and typed IPC/preload APIs
+- [x] 08-02-PLAN.md - Implement main-process playback runner and bridge lifecycle wiring
+- [x] 08-03-PLAN.md - Integrate command-playback UX with variable prompt and status feedback
+
 Success criteria:
 1. Playback engine executes workflow steps with runtime validation and timeout controls.
 2. Variable prompts are collected safely before workflow execution.
@@ -240,4 +248,4 @@ Success criteria:
 
 ---
 *Roadmap created: 2026-04-14*
-*Last updated: 2026-04-15 after phase 7 execution*
+*Last updated: 2026-04-15 after phase 8 execution*

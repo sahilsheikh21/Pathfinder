@@ -2,8 +2,8 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: Executing Phase 08
-last_updated: "2026-04-15T13:38:38.363Z"
+status: Ready for Phase 09 planning
+last_updated: "2026-04-15T13:37:51.689Z"
 progress:
   total_phases: 16
   completed_phases: 8
@@ -19,12 +19,12 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-15)
 
 **Core value:** Users can reliably automate and delegate multi-step browser tasks from a single command-driven interface.
-**Current focus:** Phase 08 — automation-playback
+**Current focus:** Phase 09 — sidebar-and-history
 
 ## Workflow State
 
 - Current milestone: Milestone 1 (Core Browser Shell)
-- Current phase: 8
+- Current phase: 9
 - Total phases: 16
 - Phase 1 execution status: Complete (2 plans executed)
 - Phase 2 execution status: Complete (3 plans executed, verification passed)
@@ -33,9 +33,10 @@ See: .planning/PROJECT.md (updated 2026-04-15)
 - Phase 5 execution status: Complete (3 plans executed, review + verification passed)
 - Phase 6 execution status: Complete (3 plans executed, review + verification passed)
 - Phase 7 execution status: Complete (3 plans executed, review + verification passed)
+- Phase 8 execution status: Complete (3 plans executed, review + verification passed)
 - Requirements status: 16 pending, 14 complete, 0 blocked
 - Research status: Complete (.planning/research/SUMMARY.md and phase research)
-- Roadmap status: Phase 7 complete; Phase 8 ready for discuss/plan
+- Roadmap status: Phase 8 complete; Phase 9 ready for discuss/plan
 
 ## Notes
 
@@ -52,8 +53,10 @@ See: .planning/PROJECT.md (updated 2026-04-15)
 - CDP integration substrate implemented: typed automation IPC contract, runtime target resolution, single-owner CDP lock manager, and lifecycle-safe bridge wiring.
 - Phase 7 execution artifacts now include 3 PLAN, 3 SUMMARY, 1 REVIEW, and 1 VERIFICATION file.
 - Action recording implemented: typed workflow schema, main-process recorder lifecycle manager, command-palette start/stop controls, and persistent recording indicator.
-- Next recommended step: /gsd-discuss-phase 8.
+- Phase 8 execution artifacts now include 3 PLAN, 3 SUMMARY, 1 REVIEW, and 1 VERIFICATION file.
+- Automation playback implemented: typed playback contracts, deterministic main-process runner, CDP-bound playback execution, and command-first variable prompt UX.
+- Next recommended step: /gsd-discuss-phase 9.
 
 ---
 *Initialized: 2026-04-14*
-*Updated: 2026-04-15 after phase 7 execution*
+*Updated: 2026-04-15 after phase 8 execution*
