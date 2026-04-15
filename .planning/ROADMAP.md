@@ -21,7 +21,7 @@
 | 1 | Project scaffold | Establish Electron + TypeScript + React foundation and Apple-style UI system | (foundation) | 4 |
 | 2 | Browser core | Deliver baseline browser runtime (tabs, nav, address bar, downloads) | BROW-01..BROW-05 | 5 |
 | 3 | Home starter page | Deliver custom new-tab experience | HOME-01..HOME-03 | 3 |
-| 4 | Command palette | Deliver keyboard-first command model | CMD-01, CMD-02 | 3 |
+| 4 | Command palette | 1/3 | In Progress|  |
 | 5 | Quick search popup | Deliver mini always-on-top search flow | QSR-01, QSR-02 | 3 |
 | 6 | CDP integration | Establish Playwright-Core + CDP bridge | AUTO-01 | 3 |
 | 7 | Action recording | Capture user actions into workflow schema | AUTO-02 | 3 |
@@ -91,10 +91,10 @@ Success criteria:
 ### Phase 4: Command Palette
 Goal: Provide VS Code-style command execution as Pathfinder's primary interaction layer.
 Requirements: CMD-01, CMD-02
-**Plans:** 3 plans
+**Plans:** 1/3 plans executed
 
 Plans:
-- [ ] 04-01-PLAN.md - Define command registry contracts and deterministic fuzzy ranking
+- [x] 04-01-PLAN.md - Define command registry contracts and deterministic fuzzy ranking
 - [ ] 04-02-PLAN.md - Build command palette overlay UI with keyboard navigation
 - [ ] 04-03-PLAN.md - Integrate shortcuts and command execution in App shell
 
