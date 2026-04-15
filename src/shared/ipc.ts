@@ -1,9 +1,21 @@
 import type {
+  AutomationHistoryClearRequest,
+  AutomationHistoryListRequest,
+  AutomationHistoryListResult,
+  AutomationHistoryRemoveRequest,
+  AutomationHistoryRerunRequest,
+  AutomationLibraryDeleteRequest,
+  AutomationLibraryListRequest,
+  AutomationLibraryResult,
+  AutomationLibraryRunRequest,
+  AutomationLibraryUpsertRequest,
   AutomationPlaybackCancelRequest,
   AutomationPlaybackCancelResult,
   AutomationPlaybackStartRequest,
   AutomationPlaybackStartResult,
   AutomationPlaybackStatus,
+  AutomationSidebarPreferences,
+  AutomationSidebarPreferencesUpdateRequest,
   AutomationBridgeStatus,
   AutomationConnectRequest,
   AutomationConnectResult,
@@ -54,6 +66,16 @@ export const IPC_CHANNELS = {
   automationPlaybackStart: 'automation:playback:start',
   automationPlaybackStatus: 'automation:playback:status',
   automationPlaybackCancel: 'automation:playback:cancel',
+  automationLibraryList: 'automation:library:list',
+  automationLibraryUpsert: 'automation:library:upsert',
+  automationLibraryDelete: 'automation:library:delete',
+  automationLibraryRun: 'automation:library:run',
+  automationHistoryList: 'automation:history:list',
+  automationHistoryRemove: 'automation:history:remove',
+  automationHistoryClear: 'automation:history:clear',
+  automationHistoryRerun: 'automation:history:rerun',
+  automationSidebarGetPreferences: 'automation:sidebar:getPreferences',
+  automationSidebarSavePreferences: 'automation:sidebar:savePreferences',
   homeGetPreferences: 'home:getPreferences',
   homeSavePreferences: 'home:savePreferences',
   homeListQuickLinks: 'home:listQuickLinks',
@@ -106,6 +128,22 @@ export interface PathfinderApi {
   cancelAutomationPlayback: (
     request?: AutomationPlaybackCancelRequest
   ) => Promise<AutomationPlaybackCancelResult>
+  automationLibraryList: (request?: AutomationLibraryListRequest) => Promise<AutomationLibraryResult>
+  automationLibraryUpsert: (request: AutomationLibraryUpsertRequest) => Promise<AutomationLibraryResult>
+  automationLibraryDelete: (request: AutomationLibraryDeleteRequest) => Promise<AutomationLibraryResult>
+  automationLibraryRun: (request: AutomationLibraryRunRequest) => Promise<AutomationPlaybackStartResult>
+  automationHistoryList: (request?: AutomationHistoryListRequest) => Promise<AutomationHistoryListResult>
+  automationHistoryRemove: (
+    request: AutomationHistoryRemoveRequest
+  ) => Promise<AutomationHistoryListResult>
+  automationHistoryClear: (request?: AutomationHistoryClearRequest) => Promise<AutomationHistoryListResult>
+  automationHistoryRerun: (
+    request: AutomationHistoryRerunRequest
+  ) => Promise<AutomationPlaybackStartResult>
+  getAutomationSidebarPreferences: () => Promise<AutomationSidebarPreferences>
+  saveAutomationSidebarPreferences: (
+    request: AutomationSidebarPreferencesUpdateRequest
+  ) => Promise<AutomationSidebarPreferences>
   getHomePreferences: () => Promise<HomePreferences>
   saveHomePreferences: (preferences: HomePreferences) => Promise<HomePreferences>
   listQuickLinks: () => Promise<QuickLink[]>

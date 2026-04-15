@@ -51,6 +51,26 @@ const api: PathfinderApi = {
     ipcRenderer.invoke(IPC_CHANNELS.automationPlaybackStatus),
   cancelAutomationPlayback: async (request) =>
     ipcRenderer.invoke(IPC_CHANNELS.automationPlaybackCancel, request),
+  automationLibraryList: async (request) =>
+    ipcRenderer.invoke(IPC_CHANNELS.automationLibraryList, request),
+  automationLibraryUpsert: async (request) =>
+    ipcRenderer.invoke(IPC_CHANNELS.automationLibraryUpsert, request),
+  automationLibraryDelete: async (request) =>
+    ipcRenderer.invoke(IPC_CHANNELS.automationLibraryDelete, request),
+  automationLibraryRun: async (request) =>
+    ipcRenderer.invoke(IPC_CHANNELS.automationLibraryRun, request),
+  automationHistoryList: async (request) =>
+    ipcRenderer.invoke(IPC_CHANNELS.automationHistoryList, request),
+  automationHistoryRemove: async (request) =>
+    ipcRenderer.invoke(IPC_CHANNELS.automationHistoryRemove, request),
+  automationHistoryClear: async (request) =>
+    ipcRenderer.invoke(IPC_CHANNELS.automationHistoryClear, request),
+  automationHistoryRerun: async (request) =>
+    ipcRenderer.invoke(IPC_CHANNELS.automationHistoryRerun, request),
+  getAutomationSidebarPreferences: async () =>
+    ipcRenderer.invoke(IPC_CHANNELS.automationSidebarGetPreferences),
+  saveAutomationSidebarPreferences: async (request) =>
+    ipcRenderer.invoke(IPC_CHANNELS.automationSidebarSavePreferences, request),
   getHomePreferences: async () => ipcRenderer.invoke(IPC_CHANNELS.homeGetPreferences),
   saveHomePreferences: async (preferences) => ipcRenderer.invoke(IPC_CHANNELS.homeSavePreferences, preferences),
   listQuickLinks: async () => ipcRenderer.invoke(IPC_CHANNELS.homeListQuickLinks),
