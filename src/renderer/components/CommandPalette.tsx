@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react'
 import { rankCommands, type CommandPaletteCommand } from '../lib/commandPalette'
 
 interface CommandPaletteProps {
@@ -26,6 +26,20 @@ export function CommandPalette({
   const matches = useMemo(() => rankCommands(commands, query), [commands, query])
 
   useEffect(() => {
+    setSelectedIndex(0)
+  }, [query])
+
+  useEffect(() => {
+    if (matches.length === 0) {
+      return
+    }
+
+    if (selectedIndex > matches.length - 1) {
+      setSelectedIndex(matches.length - 1)
+    }
+  }, [matches, selectedIndex])
+
+  useEffect(() => {
     if (!isOpen) {
       return
     }
@@ -38,6 +52,40 @@ export function CommandPalette({
     return null
   }
 
+  const handleInputKeyDown = (event: KeyboardEvent<HTMLInputElement>): void => {
+    switch (event.key) {
+      case 'ArrowDown': {
+        event.preventDefault()
+        if (matches.length === 0) {
+          return
+        }
+        setSelectedIndex((current) => Math.min(current + 1, matches.length - 1))
+        return
+      }
+      case 'ArrowUp': {
+        event.preventDefault()
+        if (matches.length === 0) {
+          return
+        }
+        setSelectedIndex((current) => Math.max(current - 1, 0))
+        return
+      }
+      case 'Enter': {
+        event.preventDefault()
+        const selectedMatch = matches[selectedIndex]
+        if (!selectedMatch) {
+          return
+        }
+        void onExecute(selectedMatch.command, query)
+        return
+      }
+      case 'Escape': {
+        event.preventDefault()
+        onRequestClose()
+      }
+    }
+  }
+
   return (
     <div className="command-palette__backdrop" role="presentation" onClick={onRequestClose}>
       <section className="command-palette__panel" role="dialog" aria-label="Command palette" onClick={(event) => event.stopPropagation()}>
@@ -47,6 +95,7 @@ export function CommandPalette({
           placeholder="Type a command"
           value={query}
           onChange={(event) => onQueryChange(event.target.value)}
+          onKeyDown={handleInputKeyDown}
           aria-label="Command palette input"
         />
 

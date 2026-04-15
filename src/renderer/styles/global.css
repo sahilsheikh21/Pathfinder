@@ -161,6 +161,93 @@ input {
   padding-top: 96px;
 }
 
+.command-palette__backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  display: grid;
+  place-items: start center;
+  padding: 116px var(--pf-space-16) var(--pf-space-16);
+  background: color-mix(in srgb, #0d1118 36%, transparent);
+  backdrop-filter: blur(8px);
+}
+
+.command-palette__panel {
+  width: min(760px, 100%);
+  max-height: min(72vh, 640px);
+  display: grid;
+  gap: var(--pf-space-12);
+  padding: var(--pf-space-16);
+  border: 1px solid var(--pf-border-subtle);
+  border-radius: var(--pf-radius-lg);
+  background: var(--pf-bg-frosted);
+  box-shadow: var(--pf-shadow-lg);
+  backdrop-filter: blur(24px);
+  overflow: hidden;
+}
+
+.command-palette__input {
+  min-height: 42px;
+  width: 100%;
+  border: 1px solid var(--pf-border-subtle);
+  border-radius: var(--pf-radius-pill);
+  background: var(--pf-bg-elevated);
+  color: var(--pf-text-primary);
+  padding: 0 var(--pf-space-16);
+}
+
+.command-palette__results {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--pf-space-8);
+  overflow-y: auto;
+}
+
+.command-palette__item {
+  width: 100%;
+  display: grid;
+  gap: var(--pf-space-4);
+  text-align: left;
+  padding: var(--pf-space-12);
+  border: 1px solid var(--pf-border-subtle);
+  border-radius: var(--pf-radius-md);
+  background: var(--pf-bg-elevated);
+  color: var(--pf-text-primary);
+  cursor: pointer;
+}
+
+.command-palette__item--active {
+  border-color: color-mix(in srgb, var(--pf-accent-primary) 60%, var(--pf-border-subtle));
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--pf-accent-primary) 32%, transparent);
+}
+
+.command-palette__title {
+  font-weight: 600;
+}
+
+.command-palette__description {
+  color: var(--pf-text-secondary);
+  font-size: 13px;
+}
+
+.command-palette__hint {
+  margin: 0;
+  color: var(--pf-text-secondary);
+  font-size: 12px;
+}
+
+.command-palette__error {
+  margin: 0;
+  padding: var(--pf-space-8) var(--pf-space-12);
+  border: 1px solid color-mix(in srgb, #d84f4f 42%, var(--pf-border-subtle));
+  border-radius: var(--pf-radius-md);
+  background: color-mix(in srgb, #d84f4f 10%, var(--pf-bg-elevated));
+  color: var(--pf-text-primary);
+  font-size: 12px;
+}
+
 .home-starter {
   display: grid;
   gap: var(--pf-space-16);
