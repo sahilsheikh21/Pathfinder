@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
   HOME_STARTER_URL,
   type BrowserTabState,
@@ -8,6 +8,7 @@ import BrowserTabStrip from './components/BrowserTabStrip'
 import CommandPalette from './components/CommandPalette'
 import DownloadShelf from './components/DownloadShelf'
 import HomeStarterPage from './components/HomeStarterPage'
+import { createBrowserCommands, type CommandPaletteCommand } from './lib/commandPalette'
 import NavigationBar from './components/NavigationBar'
 import './styles/global.css'
 
@@ -163,11 +164,39 @@ function App() {
     }))
   }
 
-  const openCommandPalette = (): void => {
+  const openCommandPalette = useCallback((): void => {
     setCommandPaletteQuery('')
     setCommandPaletteError('')
     setIsCommandPaletteOpen(true)
+  }, [])
+
+  const closeCommandPalette = useCallback((): void => {
+    setIsCommandPaletteOpen(false)
+  }, [])
+
+  const handleExecuteCommand = async (command: CommandPaletteCommand, query: string): Promise<void> => {
+    try {
+      await command.run(query)
+      setCommandPaletteError('')
+      setIsCommandPaletteOpen(false)
+    } catch {
+      setCommandPaletteError('Command failed. Try again.')
+      setIsCommandPaletteOpen(true)
+    }
   }
+
+  const commandPaletteCommands = createBrowserCommands({
+    createTab: handleCreateTab,
+    closeActiveTab: async (tabId: string) => {
+      await handleCloseTab(tabId)
+    },
+    navigateTarget: handleNavigate,
+    back: handleBack,
+    forward: handleForward,
+    reload: handleReload,
+    stop: handleStop,
+    activeTabId
+  })
 
   useEffect(() => {
     const isEditableTarget = (target: EventTarget | null): boolean => {
@@ -203,7 +232,7 @@ function App() {
     return () => {
       window.removeEventListener('keydown', handleKeyDown)
     }
-  }, [])
+  }, [openCommandPalette])
 
   return (
     <main className="browser-shell">
@@ -238,13 +267,11 @@ function App() {
       </section>
       <CommandPalette
         isOpen={isCommandPaletteOpen}
-        commands={[]}
+        commands={commandPaletteCommands}
         query={commandPaletteQuery}
         onQueryChange={setCommandPaletteQuery}
-        onRequestClose={() => setIsCommandPaletteOpen(false)}
-        onExecute={async () => {
-          return
-        }}
+        onRequestClose={closeCommandPalette}
+        onExecute={handleExecuteCommand}
         errorMessage={commandPaletteError}
       />
       <DownloadShelf downloads={downloads} />
