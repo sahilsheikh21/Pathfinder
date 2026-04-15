@@ -217,8 +217,15 @@ function App() {
       }
 
       const key = event.key.toLowerCase()
+      const opensWithCtrlShiftS = event.shiftKey && key === 's'
       const opensWithCtrlShiftP = event.shiftKey && key === 'p'
       const opensWithCtrlK = key === 'k'
+
+      if (opensWithCtrlShiftS) {
+        event.preventDefault()
+        void window.pathfinder.quickSearchToggle()
+        return
+      }
 
       if (!opensWithCtrlShiftP && !opensWithCtrlK) {
         return
