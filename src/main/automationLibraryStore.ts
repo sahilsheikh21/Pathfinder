@@ -17,7 +17,7 @@ interface AutomationLibraryStoreData {
 interface AutomationLibraryRunResolution {
   item: AutomationLibraryItem
   sourcePath: string
-  sourceLabel: AutomationLibraryRunRequest['sourceLabel']
+  sourceLabel: NonNullable<AutomationLibraryRunRequest['sourceLabel']>
 }
 
 const AUTOMATION_LIBRARY_FILE_NAME = 'automation-library.json'

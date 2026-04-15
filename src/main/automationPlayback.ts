@@ -43,6 +43,27 @@ interface PlaybackRunResult {
   message?: string
 }
 
+export interface AutomationPlaybackRunStartedEvent {
+  runId: string
+  source: AutomationPlaybackSource
+  tabId: string
+  policy: AutomationPlaybackFailurePolicy
+  startedAt: string
+}
+
+export interface AutomationPlaybackRunFinishedEvent {
+  runId: string
+  source: AutomationPlaybackSource
+  tabId: string
+  policy: AutomationPlaybackFailurePolicy
+  startedAt: string
+  finishedAt: string
+  state: AutomationPlaybackStatus['state']
+  summary: AutomationPlaybackRunSummary | null
+  failure: AutomationPlaybackStepFailure | null
+  message?: string
+}
+
 interface ActivePlayback {
   runId: string
   sessionId: string
@@ -62,6 +83,8 @@ interface AutomationPlaybackOptions {
     sessionId: string,
     callback: (page: Page) => Promise<T>
   ) => Promise<PlaybackWithPageResult<T>>
+  onRunStarted?: (event: AutomationPlaybackRunStartedEvent) => void
+  onRunFinished?: (event: AutomationPlaybackRunFinishedEvent) => void
 }
 
 export interface AutomationPlaybackManager {
@@ -302,6 +325,19 @@ export const createAutomationPlaybackManager = (
       failure: result.failure
     })
 
+    options.onRunFinished?.({
+      runId: run.runId,
+      source: run.source,
+      tabId: run.tabId,
+      policy: run.policy,
+      startedAt: run.startedAt,
+      finishedAt,
+      state: result.state,
+      summary: result.summary,
+      failure: result.failure,
+      ...(result.message ? { message: result.message } : {})
+    })
+
     await options.disconnect({ sessionId: run.sessionId })
     active = null
   }
@@ -512,6 +548,14 @@ export const createAutomationPlaybackManager = (
       failure: null
     })
 
+    options.onRunStarted?.({
+      runId: run.runId,
+      source: run.source,
+      tabId: run.tabId,
+      policy: run.policy,
+      startedAt: run.startedAt
+    })
+
     void runPlayback(run, loadedWorkflow.workflow, runtimeVariables)
 
     return {
@@ -572,6 +616,7 @@ export const createAutomationPlaybackManager = (
 
     active.cancelRequested = true
     await options.disconnect({ sessionId: active.sessionId })
+    const finishedAt = new Date().toISOString()
     setStatus({
       state: 'cancelled',
       runId: active.runId,
@@ -579,9 +624,21 @@ export const createAutomationPlaybackManager = (
       tabId: active.tabId,
       policy: active.policy,
       startedAt: active.startedAt,
-      finishedAt: new Date().toISOString(),
+      finishedAt,
       summary: status.summary,
       failure: status.failure
+    })
+    options.onRunFinished?.({
+      runId: active.runId,
+      source: active.source,
+      tabId: active.tabId,
+      policy: active.policy,
+      startedAt: active.startedAt,
+      finishedAt,
+      state: 'cancelled',
+      summary: status.summary,
+      failure: status.failure ?? null,
+      message: 'Playback cancelled during shutdown.'
     })
     active = null
   }
