@@ -1,5 +1,6 @@
 import { BrowserWindow, WebContentsView } from 'electron'
 import { randomUUID } from 'node:crypto'
+import { HOME_STARTER_URL } from '../shared/browser'
 import type {
   BrowserNavigationRequest,
   BrowserSessionSnapshot,
@@ -89,7 +90,7 @@ export class BrowserRuntime {
 
   createTab(initialUrl?: string): BrowserTabState[] {
     const tabId = randomUUID()
-    this.createTabRecord(tabId, initialUrl)
+    this.createTabRecord(tabId, initialUrl ?? HOME_STARTER_URL)
     this.activateTab(tabId)
 
     this.emitState()

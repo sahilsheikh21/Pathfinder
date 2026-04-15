@@ -29,7 +29,13 @@ const api: PathfinderApi = {
   stop: async (tabId: string) => ipcRenderer.invoke(IPC_CHANNELS.browserStop, tabId),
   listDownloads: async () => ipcRenderer.invoke(IPC_CHANNELS.browserGetDownloads),
   onBrowserState: (callback) => subscribe(IPC_CHANNELS.browserOnState, callback),
-  onDownloadState: (callback) => subscribe(IPC_CHANNELS.browserOnDownloads, callback)
+  onDownloadState: (callback) => subscribe(IPC_CHANNELS.browserOnDownloads, callback),
+  getHomePreferences: async () => ipcRenderer.invoke(IPC_CHANNELS.homeGetPreferences),
+  saveHomePreferences: async (preferences) => ipcRenderer.invoke(IPC_CHANNELS.homeSavePreferences, preferences),
+  listQuickLinks: async () => ipcRenderer.invoke(IPC_CHANNELS.homeListQuickLinks),
+  upsertQuickLink: async (quickLink) => ipcRenderer.invoke(IPC_CHANNELS.homeUpsertQuickLink, quickLink),
+  removeQuickLink: async (quickLinkId: string) => ipcRenderer.invoke(IPC_CHANNELS.homeRemoveQuickLink, quickLinkId),
+  listRecentAutomations: async () => ipcRenderer.invoke(IPC_CHANNELS.homeListRecentAutomations)
 }
 
 contextBridge.exposeInMainWorld('pathfinder', api)

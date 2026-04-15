@@ -43,3 +43,26 @@ export interface BrowserStatePayload {
 export interface DownloadStatePayload {
   downloads: DownloadState[]
 }
+
+export const HOME_STARTER_URL = 'about:pathfinder-home'
+
+export const DEFAULT_HOME_SEARCH_TEMPLATE = 'https://duckduckgo.com/?q={query}'
+
+export interface HomePreferences {
+  searchTemplate: string
+}
+
+export interface QuickLink {
+  id: string
+  title: string
+  url: string
+  pinned: boolean
+  order: number
+}
+
+export interface RecentAutomationPreview {
+  id: string
+  name: string
+  lastRunAt: string | null
+  status: 'never-run' | 'success' | 'failed'
+}

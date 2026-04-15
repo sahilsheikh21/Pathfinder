@@ -3,7 +3,10 @@ import type {
   BrowserStatePayload,
   BrowserTabState,
   DownloadState,
-  DownloadStatePayload
+  DownloadStatePayload,
+  HomePreferences,
+  QuickLink,
+  RecentAutomationPreview
 } from './browser'
 
 export const IPC_CHANNELS = {
@@ -20,7 +23,13 @@ export const IPC_CHANNELS = {
   browserStop: 'browser:stop',
   browserGetDownloads: 'browser:getDownloads',
   browserOnState: 'browser:state',
-  browserOnDownloads: 'browser:downloads'
+  browserOnDownloads: 'browser:downloads',
+  homeGetPreferences: 'home:getPreferences',
+  homeSavePreferences: 'home:savePreferences',
+  homeListQuickLinks: 'home:listQuickLinks',
+  homeUpsertQuickLink: 'home:upsertQuickLink',
+  homeRemoveQuickLink: 'home:removeQuickLink',
+  homeListRecentAutomations: 'home:listRecentAutomations'
 } as const
 
 export type IpcChannel = (typeof IPC_CHANNELS)[keyof typeof IPC_CHANNELS]
@@ -48,4 +57,10 @@ export interface PathfinderApi {
   listDownloads: () => Promise<DownloadState[]>
   onBrowserState: (callback: (payload: BrowserStatePayload) => void) => () => void
   onDownloadState: (callback: (payload: DownloadStatePayload) => void) => () => void
+  getHomePreferences: () => Promise<HomePreferences>
+  saveHomePreferences: (preferences: HomePreferences) => Promise<HomePreferences>
+  listQuickLinks: () => Promise<QuickLink[]>
+  upsertQuickLink: (quickLink: QuickLink) => Promise<QuickLink[]>
+  removeQuickLink: (quickLinkId: string) => Promise<QuickLink[]>
+  listRecentAutomations: () => Promise<RecentAutomationPreview[]>
 }
