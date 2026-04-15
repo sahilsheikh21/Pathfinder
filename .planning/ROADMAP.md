@@ -146,7 +146,7 @@ Status: Planned (2026-04-15)
 
 Plans:
 - [x] 07-01-PLAN.md - Define recorder workflow contracts and typed IPC/preload recorder surface
-- [ ] 07-02-PLAN.md - Implement main-process recorder manager with deterministic normalization and lifecycle wiring
+- [x] 07-02-PLAN.md - Implement main-process recorder manager with deterministic normalization and lifecycle wiring
 - [ ] 07-03-PLAN.md - Integrate command-palette recorder controls and persistent recording-state UI indicator
 
 Success criteria:
