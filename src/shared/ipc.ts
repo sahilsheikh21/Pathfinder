@@ -1,4 +1,9 @@
 import type {
+  AutomationBridgeStatus,
+  AutomationConnectRequest,
+  AutomationConnectResult,
+  AutomationDisconnectRequest,
+  AutomationDisconnectResult,
   BrowserNavigationRequest,
   BrowserStatePayload,
   BrowserTabState,
@@ -30,6 +35,9 @@ export const IPC_CHANNELS = {
   quickSearchOpen: 'quickSearch:open',
   quickSearchClose: 'quickSearch:close',
   quickSearchSubmit: 'quickSearch:submit',
+  automationConnect: 'automation:connect',
+  automationDisconnect: 'automation:disconnect',
+  automationGetStatus: 'automation:getStatus',
   homeGetPreferences: 'home:getPreferences',
   homeSavePreferences: 'home:savePreferences',
   homeListQuickLinks: 'home:listQuickLinks',
@@ -67,6 +75,11 @@ export interface PathfinderApi {
   quickSearchOpen: (request?: QuickSearchOpenRequest) => Promise<void>
   quickSearchClose: () => Promise<void>
   quickSearchSubmit: (request: QuickSearchSubmitRequest) => Promise<void>
+  connectAutomationSession: (request: AutomationConnectRequest) => Promise<AutomationConnectResult>
+  disconnectAutomationSession: (
+    request: AutomationDisconnectRequest
+  ) => Promise<AutomationDisconnectResult>
+  getAutomationBridgeStatus: () => Promise<AutomationBridgeStatus>
   getHomePreferences: () => Promise<HomePreferences>
   saveHomePreferences: (preferences: HomePreferences) => Promise<HomePreferences>
   listQuickLinks: () => Promise<QuickLink[]>

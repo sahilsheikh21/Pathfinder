@@ -61,6 +61,55 @@ export interface QuickSearchSubmitRequest {
   target: string
 }
 
+export type AutomationOwner = 'command-palette' | 'automation-engine' | 'system'
+
+export type AutomationSessionState =
+  | 'idle'
+  | 'connecting'
+  | 'connected'
+  | 'disconnected'
+  | 'error'
+
+export type AutomationDisconnectReason =
+  | 'none'
+  | 'busy'
+  | 'missing-target'
+  | 'attach-failed'
+  | 'disconnected'
+  | 'invalid-session'
+  | 'shutdown'
+
+export interface AutomationConnectRequest {
+  owner: AutomationOwner
+  tabId?: string
+}
+
+export interface AutomationConnectResult {
+  ok: boolean
+  sessionId: string | null
+  state: AutomationSessionState
+  reason: AutomationDisconnectReason
+  tabId: string | null
+}
+
+export interface AutomationDisconnectRequest {
+  sessionId: string
+}
+
+export interface AutomationDisconnectResult {
+  ok: boolean
+  state: AutomationSessionState
+  reason: AutomationDisconnectReason
+}
+
+export interface AutomationBridgeStatus {
+  state: AutomationSessionState
+  owner: AutomationOwner | null
+  sessionId: string | null
+  tabId: string | null
+  reason: AutomationDisconnectReason
+}
+
 export interface QuickLink {
   id: string
   title: string
