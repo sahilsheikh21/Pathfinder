@@ -34,7 +34,7 @@ See: .planning/PROJECT.md (updated 2026-04-15)
 - Phase 6 execution status: Complete (3 plans executed, review + verification passed)
 - Phase 7 execution status: Complete (3 plans executed, review + verification passed)
 - Phase 8 execution status: Complete (3 plans executed, review + verification passed)
-- Requirements status: 16 pending, 14 complete, 0 blocked
+- Requirements status: 15 pending, 15 complete, 0 blocked
 - Research status: Complete (.planning/research/SUMMARY.md and phase research)
 - Roadmap status: Phase 8 complete; Phase 9 ready for discuss/plan
 
