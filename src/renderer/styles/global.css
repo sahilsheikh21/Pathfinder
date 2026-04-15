@@ -216,6 +216,31 @@ input {
   color: var(--pf-text-secondary);
 }
 
+.home-starter__quick-link-form {
+  display: grid;
+  grid-template-columns: 1fr 1fr auto;
+  gap: var(--pf-space-8);
+}
+
+.home-starter__quick-link-form input {
+  min-height: 36px;
+  border: 1px solid var(--pf-border-subtle);
+  border-radius: var(--pf-radius-pill);
+  background: var(--pf-bg-elevated);
+  color: var(--pf-text-primary);
+  padding: 0 var(--pf-space-12);
+}
+
+.home-starter__quick-link-form button {
+  min-height: 36px;
+  padding: 0 var(--pf-space-14);
+  border: 1px solid var(--pf-border-subtle);
+  border-radius: var(--pf-radius-pill);
+  background: var(--pf-bg-elevated);
+  color: var(--pf-text-primary);
+  cursor: pointer;
+}
+
 .home-starter__quick-links {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -242,6 +267,22 @@ input {
   margin: 0;
 }
 
+.home-starter__card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--pf-space-6);
+}
+
+.home-starter__card-actions button {
+  min-height: 28px;
+  padding: 0 var(--pf-space-10);
+  border: 1px solid var(--pf-border-subtle);
+  border-radius: var(--pf-radius-pill);
+  background: transparent;
+  color: var(--pf-text-primary);
+  cursor: pointer;
+}
+
 @media (max-width: 880px) {
   .home-starter__quick-links,
   .home-starter__recent-automations {
@@ -252,6 +293,10 @@ input {
 @media (max-width: 560px) {
   .home-starter {
     padding: var(--pf-space-16) var(--pf-space-12);
+  }
+
+  .home-starter__quick-link-form {
+    grid-template-columns: 1fr;
   }
 
   .home-starter__quick-links,

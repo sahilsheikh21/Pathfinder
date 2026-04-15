@@ -3,7 +3,6 @@ import {
   HOME_STARTER_URL,
   type BrowserTabState,
   type DownloadState,
-  type QuickLink,
   type RecentAutomationPreview
 } from '../shared/browser'
 import BrowserTabStrip from './components/BrowserTabStrip'
@@ -16,7 +15,6 @@ function App() {
   const [tabs, setTabs] = useState<BrowserTabState[]>([])
   const [activeTabId, setActiveTabId] = useState<string | null>(null)
   const [downloads, setDownloads] = useState<DownloadState[]>([])
-  const [quickLinks, setQuickLinks] = useState<QuickLink[]>([])
   const [recentAutomations, setRecentAutomations] = useState<RecentAutomationPreview[]>([])
   const [homeDraftByTabId, setHomeDraftByTabId] = useState<Record<string, string>>({})
 
@@ -155,10 +153,6 @@ function App() {
       return
     }
 
-    window.pathfinder.listQuickLinks().then(setQuickLinks).catch(() => {
-      setQuickLinks([])
-    })
-
     window.pathfinder.listRecentAutomations().then(setRecentAutomations).catch(() => {
       setRecentAutomations([])
     })
@@ -204,7 +198,7 @@ function App() {
             activeTabId={activeTabId}
             draftQueryValue={homeDraftQuery}
             onDraftQueryChange={handleHomeDraftQueryChange}
-            quickLinks={quickLinks}
+            onNavigate={handleNavigate}
             recentAutomations={recentAutomations}
           />
         ) : null}

@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react'
+import { useEffect, useState, type FormEvent } from 'react'
 import {
   DEFAULT_HOME_SEARCH_TEMPLATE,
   type QuickLink,
@@ -9,7 +9,7 @@ interface HomeStarterPageProps {
   activeTabId: string | null
   draftQueryValue: string
   onDraftQueryChange: (value: string) => void
-  quickLinks: QuickLink[]
+  onNavigate: (target: string) => void
   recentAutomations: RecentAutomationPreview[]
 }
 
@@ -17,9 +17,12 @@ function HomeStarterPage({
   activeTabId,
   draftQueryValue,
   onDraftQueryChange,
-  quickLinks,
+  onNavigate,
   recentAutomations
 }: HomeStarterPageProps) {
+  const [quickLinks, setQuickLinks] = useState<QuickLink[]>([])
+  const [linkTitle, setLinkTitle] = useState('')
+  const [linkUrl, setLinkUrl] = useState('')
   const [hint, setHint] = useState('')
   const now = new Date()
   const greeting = now.getHours() < 12 ? 'Good morning' : now.getHours() < 18 ? 'Good afternoon' : 'Good evening'
@@ -53,6 +56,61 @@ function HomeStarterPage({
     setHint('')
   }
 
+  const loadQuickLinks = async (): Promise<void> => {
+    const listedQuickLinks = await window.pathfinder.listQuickLinks()
+    setQuickLinks(listedQuickLinks.slice(0, 6))
+  }
+
+  useEffect(() => {
+    if (!activeTabId) {
+      return
+    }
+
+    loadQuickLinks().catch(() => {
+      setQuickLinks([])
+    })
+  }, [activeTabId])
+
+  const handleAddLink = async (event: FormEvent<HTMLFormElement>): Promise<void> => {
+    event.preventDefault()
+
+    const title = linkTitle.trim()
+    const url = linkUrl.trim()
+    if (!title || !url) {
+      setHint('Provide both title and URL to add a quick link.')
+      return
+    }
+
+    try {
+      const updated = await window.pathfinder.upsertQuickLink({
+        id: `quick-link-${Date.now()}`,
+        title,
+        url,
+        pinned: false,
+        order: quickLinks.length
+      })
+      setQuickLinks(updated.slice(0, 6))
+      setLinkTitle('')
+      setLinkUrl('')
+      setHint('')
+    } catch {
+      setHint('Quick link must use an http:// or https:// URL.')
+    }
+  }
+
+  const handleTogglePin = async (quickLink: QuickLink): Promise<void> => {
+    const updated = await window.pathfinder.upsertQuickLink({
+      ...quickLink,
+      pinned: !quickLink.pinned
+    })
+    setQuickLinks(updated.slice(0, 6))
+  }
+
+  const handleRemoveLink = async (quickLinkId: string): Promise<void> => {
+    const updated = await window.pathfinder.removeQuickLink(quickLinkId)
+    setQuickLinks(updated.slice(0, 6))
+  }
+
   return (
     <div className="home-starter" data-tab-id={activeTabId ?? undefined}>
       <header className="home-starter__header">
@@ -73,11 +131,38 @@ function HomeStarterPage({
         {hint}
       </p>
 
+      <form className="home-starter__quick-link-form" onSubmit={handleAddLink}>
+        <input
+          value={linkTitle}
+          onChange={(event) => setLinkTitle(event.target.value)}
+          placeholder="Link title"
+          aria-label="Quick link title"
+        />
+        <input
+          value={linkUrl}
+          onChange={(event) => setLinkUrl(event.target.value)}
+          placeholder="https://example.com"
+          aria-label="Quick link URL"
+        />
+        <button type="submit">Add Link</button>
+      </form>
+
       <section className="home-starter__quick-links" aria-label="Quick links">
         {quickLinks.slice(0, 6).map((quickLink) => (
           <article key={quickLink.id} className="home-starter__card">
             <h3>{quickLink.title}</h3>
             <p>{quickLink.url}</p>
+            <div className="home-starter__card-actions">
+              <button type="button" onClick={() => onNavigate(quickLink.url)}>
+                Open
+              </button>
+              <button type="button" onClick={() => handleTogglePin(quickLink)}>
+                {quickLink.pinned ? 'Unpin' : 'Pin'}
+              </button>
+              <button type="button" onClick={() => handleRemoveLink(quickLink.id)}>
+                Remove
+              </button>
+            </div>
           </article>
         ))}
       </section>

@@ -89,6 +89,10 @@ const isValidStoreData = (value: unknown): value is HomeStoreData => {
 
 const sortQuickLinks = (quickLinks: QuickLink[]): QuickLink[] => {
   return [...quickLinks].sort((left, right) => {
+    if (left.pinned !== right.pinned) {
+      return left.pinned ? -1 : 1
+    }
+
     if (left.order !== right.order) {
       return left.order - right.order
     }
