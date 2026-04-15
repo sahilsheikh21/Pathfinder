@@ -24,6 +24,8 @@ export interface BrowserCommandDeps {
   forward: () => Promise<void>
   reload: () => Promise<void>
   stop: () => Promise<void>
+  startRecording: () => Promise<void>
+  stopRecording: () => Promise<void>
   activeTabId: string | null
 }
 
@@ -214,6 +216,24 @@ export const createBrowserCommands = (deps: BrowserCommandDeps): CommandPaletteC
         const value = requireInput(input, 'Provide a search query.')
         const resolution = resolveOmniboxInput(value, DEFAULT_SEARCH_TEMPLATE)
         await deps.navigateTarget(resolution.target)
+      }
+    },
+    {
+      id: 'automation.record',
+      title: 'Automation: Start Recording',
+      description: 'Start recording actions in the active tab.',
+      keywords: ['automation', 'record', 'start', 'workflow'],
+      run: async () => {
+        await deps.startRecording()
+      }
+    },
+    {
+      id: 'automation.stop',
+      title: 'Automation: Stop Recording',
+      description: 'Stop the active recording session.',
+      keywords: ['automation', 'record', 'stop', 'workflow'],
+      run: async () => {
+        await deps.stopRecording()
       }
     }
   ]
