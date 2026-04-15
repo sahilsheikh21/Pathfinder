@@ -1,5 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
+  type AutomationPlaybackStartRequest,
+  type AutomationPlaybackStartResult,
+  type AutomationPlaybackStatus,
+  type AutomationPlaybackVariablePrompt,
   HOME_STARTER_URL,
   type RecorderStartRequest,
   type RecorderStatus,
@@ -13,6 +17,18 @@ import HomeStarterPage from './components/HomeStarterPage'
 import { createBrowserCommands, type CommandPaletteCommand } from './lib/commandPalette'
 import NavigationBar from './components/NavigationBar'
 import './styles/global.css'
+
+const getPlaybackFailureMessage = (result: AutomationPlaybackStartResult): string => {
+  if (result.failure) {
+    return `${result.failure.action} step ${result.failure.seq} failed: ${result.failure.message}`
+  }
+
+  if (result.message?.trim()) {
+    return result.message
+  }
+
+  return `Playback start failed: ${result.reason}`
+}
 
 function App() {
   const [tabs, setTabs] = useState<BrowserTabState[]>([])
@@ -29,6 +45,19 @@ function App() {
     reason: 'none',
     startedAt: null
   })
+  const [playbackStatus, setPlaybackStatus] = useState<AutomationPlaybackStatus>({
+    state: 'idle',
+    runId: null,
+    source: null,
+    tabId: null,
+    policy: 'stop-on-error',
+    startedAt: null,
+    finishedAt: null,
+    summary: null,
+    failure: null
+  })
+  const [playbackPromptVariables, setPlaybackPromptVariables] = useState<AutomationPlaybackVariablePrompt[]>([])
+  const [pendingPlaybackSourcePath, setPendingPlaybackSourcePath] = useState<string | null>(null)
 
   const activeTab = useMemo(() => {
     return tabs.find((tab) => tab.id === activeTabId) ?? null
@@ -188,6 +217,11 @@ function App() {
     setRecorderStatus(status)
   }, [])
 
+  const refreshPlaybackStatus = useCallback(async (): Promise<void> => {
+    const status = await window.pathfinder.getAutomationPlaybackStatus()
+    setPlaybackStatus(status)
+  }, [])
+
   const startRecordingFromPalette = useCallback(async (): Promise<void> => {
     const request: RecorderStartRequest = activeTabId
       ? { owner: 'command-palette', tabId: activeTabId }
@@ -227,13 +261,79 @@ function App() {
     }
   }, [recorderStatus.sessionId])
 
+  const startPlaybackFromPalette = useCallback(
+    async (workflowPath: string): Promise<void> => {
+      const initialRequest: AutomationPlaybackStartRequest = {
+        source: { kind: 'file', path: workflowPath },
+        ...(activeTabId ? { tabId: activeTabId } : {})
+      }
+
+      const initialResult = await window.pathfinder.startAutomationPlayback(initialRequest)
+      if (initialResult.ok) {
+        setPlaybackPromptVariables([])
+        setPendingPlaybackSourcePath(null)
+        await refreshPlaybackStatus()
+        return
+      }
+
+      if (initialResult.reason === 'missing-variables' && initialResult.requiredVariables?.length) {
+        setPlaybackPromptVariables(initialResult.requiredVariables)
+        setPendingPlaybackSourcePath(workflowPath)
+        return
+      }
+
+      throw new Error(getPlaybackFailureMessage(initialResult))
+    },
+    [activeTabId, refreshPlaybackStatus]
+  )
+
+  const submitPlaybackVariables = useCallback(
+    async (values: Record<string, string>): Promise<void> => {
+      if (!pendingPlaybackSourcePath) {
+        throw new Error('No pending playback request to resume.')
+      }
+
+      const retryRequest: AutomationPlaybackStartRequest = {
+        source: { kind: 'file', path: pendingPlaybackSourcePath },
+        variables: values,
+        ...(activeTabId ? { tabId: activeTabId } : {})
+      }
+
+      const retryResult = await window.pathfinder.startAutomationPlayback(retryRequest)
+      if (!retryResult.ok) {
+        throw new Error(getPlaybackFailureMessage(retryResult))
+      }
+
+      setPlaybackPromptVariables([])
+      setPendingPlaybackSourcePath(null)
+      await refreshPlaybackStatus()
+    },
+    [activeTabId, pendingPlaybackSourcePath, refreshPlaybackStatus]
+  )
+
+  const cancelPlaybackPrompt = useCallback((): void => {
+    setPlaybackPromptVariables([])
+    setPendingPlaybackSourcePath(null)
+  }, [])
+
+  const cancelPlaybackFromPalette = useCallback(async (): Promise<void> => {
+    const result = await window.pathfinder.cancelAutomationPlayback()
+    if (!result.ok) {
+      throw new Error(`Playback cancel failed: ${result.reason}`)
+    }
+
+    setPlaybackPromptVariables([])
+    setPendingPlaybackSourcePath(null)
+    await refreshPlaybackStatus()
+  }, [refreshPlaybackStatus])
+
   const handleExecuteCommand = async (command: CommandPaletteCommand, query: string): Promise<void> => {
     try {
       await command.run(query)
       setCommandPaletteError('')
       setIsCommandPaletteOpen(false)
-    } catch {
-      setCommandPaletteError('Command failed. Try again.')
+    } catch (error) {
+      setCommandPaletteError(error instanceof Error ? error.message : 'Command failed. Try again.')
       setIsCommandPaletteOpen(true)
     }
   }
@@ -250,23 +350,47 @@ function App() {
     stop: handleStop,
     startRecording: startRecordingFromPalette,
     stopRecording: stopRecordingFromPalette,
+    startPlayback: startPlaybackFromPalette,
+    cancelPlayback: cancelPlaybackFromPalette,
     activeTabId
   })
 
   useEffect(() => {
     const initialRefreshTimer = window.setTimeout(() => {
       void refreshRecorderStatus()
+      void refreshPlaybackStatus()
     }, 0)
 
     const interval = window.setInterval(() => {
       void refreshRecorderStatus()
+      void refreshPlaybackStatus()
     }, 1000)
 
     return () => {
       window.clearTimeout(initialRefreshTimer)
       window.clearInterval(interval)
     }
-  }, [refreshRecorderStatus])
+  }, [refreshPlaybackStatus, refreshRecorderStatus])
+
+  const playbackIndicatorLabel = useMemo(() => {
+    if (playbackStatus.state === 'running') {
+      return `Playback running (${playbackStatus.source?.path ?? 'workflow'})`
+    }
+
+    if (playbackStatus.state === 'failed' && playbackStatus.failure) {
+      return `Playback failed at ${playbackStatus.failure.action}#${playbackStatus.failure.seq}`
+    }
+
+    if (playbackStatus.state === 'completed') {
+      return 'Playback completed'
+    }
+
+    if (playbackStatus.state === 'cancelled') {
+      return 'Playback cancelled'
+    }
+
+    return 'Playback idle'
+  }, [playbackStatus])
 
   useEffect(() => {
     const isEditableTarget = (target: EventTarget | null): boolean => {
@@ -315,6 +439,12 @@ function App() {
     <main className="browser-shell">
       <section className="browser-chrome">
         <div className="browser-chrome__status-row">
+          <span
+            className={`playback-indicator playback-indicator--${playbackStatus.state}`}
+            aria-live="polite"
+          >
+            {playbackIndicatorLabel}
+          </span>
           <span
             className={`recorder-indicator ${
               recorderStatus.state === 'recording' ? 'recorder-indicator--active' : 'recorder-indicator--idle'
