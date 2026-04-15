@@ -110,6 +110,113 @@ export interface AutomationBridgeStatus {
   reason: AutomationDisconnectReason
 }
 
+export type RecorderAction = 'navigate' | 'click' | 'type' | 'wait'
+
+export type RecorderSessionState = 'idle' | 'recording' | 'stopped' | 'error'
+
+export type RecorderStopReason =
+  | 'none'
+  | 'busy'
+  | 'not-recording'
+  | 'target-lost'
+  | 'bridge-disconnected'
+  | 'invalid-session'
+  | 'shutdown'
+  | 'failed'
+
+export type WorkflowVariableType = 'text' | 'secret'
+
+export interface WorkflowVariableDefinition {
+  type: WorkflowVariableType
+  prompt: string
+}
+
+export interface RecorderSecretPlaceholder {
+  kind: 'variable'
+  name: string
+  secret: true
+}
+
+export type RecorderInputValue = string | RecorderSecretPlaceholder
+
+interface RecorderStepBase {
+  id: string
+  seq: number
+}
+
+export interface RecorderNavigateStep extends RecorderStepBase {
+  action: 'navigate'
+  url: string
+}
+
+export interface RecorderClickStep extends RecorderStepBase {
+  action: 'click'
+  selector: string
+}
+
+export interface RecorderTypeStep extends RecorderStepBase {
+  action: 'type'
+  selector: string
+  value: RecorderInputValue
+}
+
+export interface RecorderWaitStep extends RecorderStepBase {
+  action: 'wait'
+  waitFor: 'navigation' | 'selector'
+  selector?: string
+  timeoutMs?: number
+}
+
+export type RecorderWorkflowStep =
+  | RecorderNavigateStep
+  | RecorderClickStep
+  | RecorderTypeStep
+  | RecorderWaitStep
+
+export interface RecorderWorkflowDocument {
+  version: 1
+  id: string
+  name: string
+  description?: string
+  createdAt: string
+  updatedAt: string
+  steps: RecorderWorkflowStep[]
+  variables?: Record<string, WorkflowVariableDefinition>
+  metadata?: Record<string, string | number | boolean | null>
+}
+
+export interface RecorderStartRequest {
+  owner: AutomationOwner
+  tabId?: string
+  name?: string
+}
+
+export interface RecorderStartResult {
+  ok: boolean
+  sessionId: string | null
+  state: RecorderSessionState
+  reason: RecorderStopReason
+  tabId: string | null
+}
+
+export interface RecorderStopRequest {
+  sessionId?: string
+}
+
+export interface RecorderStopResult {
+  ok: boolean
+  state: RecorderSessionState
+  reason: RecorderStopReason
+}
+
+export interface RecorderStatus {
+  state: RecorderSessionState
+  sessionId: string | null
+  tabId: string | null
+  reason: RecorderStopReason
+  startedAt: string | null
+}
+
 export interface QuickLink {
   id: string
   title: string
