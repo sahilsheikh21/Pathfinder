@@ -52,6 +52,95 @@ export interface HomePreferences {
   searchTemplate: string
 }
 
+export type LLMProviderId = 'openai' | 'ollama'
+
+export interface LLMProviderCapability {
+  streaming: boolean
+  jsonMode: boolean
+  toolCalls: boolean
+  systemRole: boolean
+}
+
+export interface LLMProviderConfig {
+  provider: LLMProviderId
+  model: string
+  endpoint?: string
+  timeoutMs: number
+  capabilities?: Partial<LLMProviderCapability>
+}
+
+export interface LLMSecretPatch {
+  mode: 'unchanged' | 'set' | 'clear'
+  value?: string
+}
+
+export interface LLMProviderConfigPatch {
+  provider?: LLMProviderId
+  model?: string
+  endpoint?: string | null
+  timeoutMs?: number
+  capabilities?: Partial<LLMProviderCapability>
+  secret?: LLMSecretPatch
+}
+
+export interface LLMAdapterConfigState {
+  config: LLMProviderConfig
+  secretPresent: boolean
+  updatedAt: string
+}
+
+export interface LLMValidateConfigRequest {
+  provider?: LLMProviderId
+}
+
+export interface LLMGenerateError {
+  reason:
+    | 'invalid-config'
+    | 'auth'
+    | 'network'
+    | 'timeout'
+    | 'quota'
+    | 'provider-error'
+    | 'unsupported-capability'
+  message: string
+  provider: LLMProviderId
+  retryable: boolean
+}
+
+export interface LLMValidateConfigResult {
+  ok: boolean
+  provider: LLMProviderId
+  model: string
+  checkedAt: string
+  latencyMs?: number
+  error?: LLMGenerateError
+}
+
+export interface LLMGenerateRequest {
+  provider: LLMProviderId
+  model?: string
+  prompt: string
+  systemPrompt?: string
+  timeoutMs?: number
+}
+
+export interface LLMGenerateTokenUsage {
+  input: number
+  output: number
+  total: number
+}
+
+export interface LLMGenerateResult {
+  ok: boolean
+  provider: LLMProviderId
+  model: string
+  text: string
+  finishReason: 'stop' | 'length' | 'content-filter' | 'unknown'
+  tokenUsage?: LLMGenerateTokenUsage
+  latencyMs?: number
+  error?: LLMGenerateError
+}
+
 export interface QuickSearchOpenRequest {
   query?: string
 }
