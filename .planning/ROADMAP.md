@@ -130,7 +130,7 @@ Status: Planned (2026-04-15)
 
 Plans:
 - [x] 06-01-PLAN.md - Define Playwright/CDP dependency and typed automation bridge contracts
-- [ ] 06-02-PLAN.md - Implement runtime target resolution and main-process CDP bridge lock manager
+- [x] 06-02-PLAN.md - Implement runtime target resolution and main-process CDP bridge lock manager
 - [ ] 06-03-PLAN.md - Wire CDP bridge into startup, IPC handlers, and shutdown lifecycle cleanup
 
 Success criteria:
