@@ -7,6 +7,7 @@ import {
   createQuickSearchWindowManager,
   type QuickSearchWindowManager
 } from './quickSearchWindow'
+import { createAutomationCdpBridge, type AutomationCdpBridge } from './cdpBridge'
 import { loadSessionSnapshot, saveSessionSnapshot } from './sessionStore'
 import { IPC_CHANNELS, type AppPlatformResponse, type AppVersionResponse } from '../shared/ipc'
 import { DEFAULT_HOME_SEARCH_TEMPLATE } from '../shared/browser'
@@ -15,6 +16,12 @@ let browserRuntime: BrowserRuntime | null = null
 let downloadManager: DownloadManager | null = null
 let homeStore: HomeStore | null = null
 let quickSearchWindowManager: QuickSearchWindowManager | null = null
+let automationCdpBridge: AutomationCdpBridge | null = null
+
+const cdpPort = Number(process.env.PATHFINDER_CDP_PORT ?? '9222')
+const cdpEndpoint = `http://127.0.0.1:${cdpPort}`
+
+app.commandLine.appendSwitch('remote-debugging-port', String(cdpPort))
 
 function registerIpcHandlers(): void {
   ipcMain.handle(IPC_CHANNELS.appGetVersion, (): AppVersionResponse => ({
@@ -113,6 +120,11 @@ function createWindow(): void {
     if (browserRuntime) {
       saveSessionSnapshot(userDataPath, browserRuntime.exportSnapshot())
     }
+  })
+
+  automationCdpBridge = createAutomationCdpBridge({
+    cdpEndpoint,
+    resolveTarget: (tabId) => browserRuntime?.resolveAutomationTarget(tabId) ?? null
   })
 
   downloadManager = new DownloadManager(
