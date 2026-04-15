@@ -91,6 +91,13 @@ Success criteria:
 ### Phase 4: Command Palette
 Goal: Provide VS Code-style command execution as Pathfinder's primary interaction layer.
 Requirements: CMD-01, CMD-02
+**Plans:** 3 plans
+
+Plans:
+- [ ] 04-01-PLAN.md - Define command registry contracts and deterministic fuzzy ranking
+- [ ] 04-02-PLAN.md - Build command palette overlay UI with keyboard navigation
+- [ ] 04-03-PLAN.md - Integrate shortcuts and command execution in App shell
+
 Success criteria:
 1. Command palette opens via configured keyboard shortcuts globally.
 2. Fuzzy search returns commands with description and argument hints.
@@ -208,4 +215,4 @@ Success criteria:
 
 ---
 *Roadmap created: 2026-04-14*
-*Last updated: 2026-04-15 after phase 3 execution*
+*Last updated: 2026-04-15 after phase 4 planning*
