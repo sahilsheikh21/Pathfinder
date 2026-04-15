@@ -125,6 +125,14 @@ Success criteria:
 ### Phase 6: CDP Integration
 Goal: Introduce automation substrate by attaching Playwright Core through CDP.
 Requirements: AUTO-01
+Status: Planned (2026-04-15)
+**Plans:** 3 plans
+
+Plans:
+- [ ] 06-01-PLAN.md - Define Playwright/CDP dependency and typed automation bridge contracts
+- [ ] 06-02-PLAN.md - Implement runtime target resolution and main-process CDP bridge lock manager
+- [ ] 06-03-PLAN.md - Wire CDP bridge into startup, IPC handlers, and shutdown lifecycle cleanup
+
 Success criteria:
 1. Playwright Core can connect to active browser context through managed CDP session.
 2. CDP ownership rules prevent concurrent detach/collision failures.
@@ -224,4 +232,4 @@ Success criteria:
 
 ---
 *Roadmap created: 2026-04-14*
-*Last updated: 2026-04-15 after phase 5 execution*
+*Last updated: 2026-04-15 after phase 6 planning*
