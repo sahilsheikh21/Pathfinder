@@ -2,11 +2,14 @@ import { app, BrowserWindow, ipcMain } from 'electron'
 import { resolve } from 'node:path'
 import { BrowserRuntime } from './browserRuntime'
 import { DownloadManager } from './downloadManager'
+import { createHomeStore, type HomeStore } from './homeStore'
 import { loadSessionSnapshot, saveSessionSnapshot } from './sessionStore'
 import { IPC_CHANNELS, type AppPlatformResponse, type AppVersionResponse } from '../shared/ipc'
+import { DEFAULT_HOME_SEARCH_TEMPLATE } from '../shared/browser'
 
 let browserRuntime: BrowserRuntime | null = null
 let downloadManager: DownloadManager | null = null
+let homeStore: HomeStore | null = null
 
 function registerIpcHandlers(): void {
   ipcMain.handle(IPC_CHANNELS.appGetVersion, (): AppVersionResponse => ({
@@ -35,10 +38,27 @@ function registerIpcHandlers(): void {
   ipcMain.handle(IPC_CHANNELS.browserReload, (_event, tabId: string) => browserRuntime?.reload(tabId) ?? [])
   ipcMain.handle(IPC_CHANNELS.browserStop, (_event, tabId: string) => browserRuntime?.stop(tabId) ?? [])
   ipcMain.handle(IPC_CHANNELS.browserGetDownloads, () => downloadManager?.listDownloads() ?? [])
+  ipcMain.handle(IPC_CHANNELS.homeGetPreferences, () =>
+    homeStore?.getHomePreferences() ?? { searchTemplate: DEFAULT_HOME_SEARCH_TEMPLATE }
+  )
+  ipcMain.handle(IPC_CHANNELS.homeSavePreferences, (_event, preferences) =>
+    homeStore?.saveHomePreferences(preferences) ?? { searchTemplate: DEFAULT_HOME_SEARCH_TEMPLATE }
+  )
+  ipcMain.handle(IPC_CHANNELS.homeListQuickLinks, () => homeStore?.listQuickLinks() ?? [])
+  ipcMain.handle(IPC_CHANNELS.homeUpsertQuickLink, (_event, quickLink) =>
+    homeStore?.upsertQuickLink(quickLink) ?? []
+  )
+  ipcMain.handle(IPC_CHANNELS.homeRemoveQuickLink, (_event, quickLinkId: string) =>
+    homeStore?.removeQuickLink(quickLinkId) ?? []
+  )
+  ipcMain.handle(IPC_CHANNELS.homeListRecentAutomations, () =>
+    homeStore?.listRecentAutomations() ?? []
+  )
 }
 
 function createWindow(): void {
   const userDataPath = app.getPath('userData')
+  homeStore = createHomeStore(userDataPath)
 
   const mainWindow = new BrowserWindow({
     width: 1280,
