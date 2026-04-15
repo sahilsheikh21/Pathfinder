@@ -39,6 +39,12 @@ const api: PathfinderApi = {
   disconnectAutomationSession: async (request) =>
     ipcRenderer.invoke(IPC_CHANNELS.automationDisconnect, request),
   getAutomationBridgeStatus: async () => ipcRenderer.invoke(IPC_CHANNELS.automationGetStatus),
+  startAutomationRecording: async (request) =>
+    ipcRenderer.invoke(IPC_CHANNELS.automationRecordStart, request),
+  stopAutomationRecording: async (request) =>
+    ipcRenderer.invoke(IPC_CHANNELS.automationRecordStop, request),
+  getAutomationRecordingStatus: async () =>
+    ipcRenderer.invoke(IPC_CHANNELS.automationRecordStatus),
   getHomePreferences: async () => ipcRenderer.invoke(IPC_CHANNELS.homeGetPreferences),
   saveHomePreferences: async (preferences) => ipcRenderer.invoke(IPC_CHANNELS.homeSavePreferences, preferences),
   listQuickLinks: async () => ipcRenderer.invoke(IPC_CHANNELS.homeListQuickLinks),

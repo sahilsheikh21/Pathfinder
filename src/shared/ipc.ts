@@ -4,6 +4,11 @@ import type {
   AutomationConnectResult,
   AutomationDisconnectRequest,
   AutomationDisconnectResult,
+  RecorderStartRequest,
+  RecorderStartResult,
+  RecorderStatus,
+  RecorderStopRequest,
+  RecorderStopResult,
   BrowserNavigationRequest,
   BrowserStatePayload,
   BrowserTabState,
@@ -38,6 +43,9 @@ export const IPC_CHANNELS = {
   automationConnect: 'automation:connect',
   automationDisconnect: 'automation:disconnect',
   automationGetStatus: 'automation:getStatus',
+  automationRecordStart: 'automation:record:start',
+  automationRecordStop: 'automation:record:stop',
+  automationRecordStatus: 'automation:record:status',
   homeGetPreferences: 'home:getPreferences',
   homeSavePreferences: 'home:savePreferences',
   homeListQuickLinks: 'home:listQuickLinks',
@@ -80,6 +88,9 @@ export interface PathfinderApi {
     request: AutomationDisconnectRequest
   ) => Promise<AutomationDisconnectResult>
   getAutomationBridgeStatus: () => Promise<AutomationBridgeStatus>
+  startAutomationRecording: (request: RecorderStartRequest) => Promise<RecorderStartResult>
+  stopAutomationRecording: (request?: RecorderStopRequest) => Promise<RecorderStopResult>
+  getAutomationRecordingStatus: () => Promise<RecorderStatus>
   getHomePreferences: () => Promise<HomePreferences>
   saveHomePreferences: (preferences: HomePreferences) => Promise<HomePreferences>
   listQuickLinks: () => Promise<QuickLink[]>
