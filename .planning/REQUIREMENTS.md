@@ -20,8 +20,8 @@
 - [x] **HOME-03**: User can launch quick links and recently used automations directly from the home page.
 - [x] **CMD-01**: User can open a command palette via keyboard shortcuts and execute browser commands.
 - [x] **CMD-02**: User can find commands using fuzzy search with command descriptions and argument hints.
-- [ ] **QSR-01**: User can toggle a quick-search popup window with a hotkey and dismiss it with Escape.
-- [ ] **QSR-02**: User can open quick-search results in the active browser tab.
+- [x] **QSR-01**: User can toggle a quick-search popup window with a hotkey and dismiss it with Escape.
+- [x] **QSR-02**: User can open quick-search results in the active browser tab.
 
 ### Automation Engine
 
@@ -83,8 +83,8 @@
 | HOME-03 | Phase 3 | Complete |
 | CMD-01 | Phase 4 | Complete |
 | CMD-02 | Phase 4 | Complete |
-| QSR-01 | Phase 5 | Pending |
-| QSR-02 | Phase 5 | Pending |
+| QSR-01 | Phase 5 | Complete |
+| QSR-02 | Phase 5 | Complete |
 | AUTO-01 | Phase 6 | Pending |
 | AUTO-02 | Phase 7 | Pending |
 | AUTO-03 | Phase 8 | Pending |
@@ -111,4 +111,4 @@
 
 ---
 *Requirements defined: 2026-04-14*
-*Last updated: 2026-04-15 after phase 4 execution*
+*Last updated: 2026-04-15 after phase 5 execution*

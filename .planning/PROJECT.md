@@ -16,11 +16,12 @@ Users can reliably automate and delegate multi-step browser tasks from a single 
 - ✓ Tokenized Apple-style renderer shell foundation with theme mode switching — Phase 1
 - ✓ CI quality gate baseline (lint, typecheck, build) and packaging config scaffold — Phase 1
 - ✓ Chromium-based desktop browser shell with tabs, address bar routing, navigation controls, downloads, and crash-session recovery — Phase 2
+- ✓ Home starter page with custom new-tab UX, search-first behavior, and quick-link launch — Phase 3
+- ✓ Command palette with deterministic fuzzy matching and keyboard-first execution — Phase 4
+- ✓ Quick search popup window with hotkey toggle and active-tab navigation routing — Phase 5
 
 ### Active
 
-- [ ] Command palette for browser actions, automation commands, and AI commands
-- [ ] Quick search popup window with hotkey toggle and dismiss behavior
 - [ ] Automation engine with record, save, and replay using structured JSON workflows
 - [ ] Sidebar for saved automations, run history, and AI chat operations
 - [ ] LLM integration layer supporting cloud and local providers
@@ -39,7 +40,7 @@ Users can reliably automate and delegate multi-step browser tasks from a single 
 
 The project is based on prior research comparing browser engine and framework options. Chromium was selected for embeddability and automation compatibility, with Electron chosen for deep browser control, CDP access, and ecosystem maturity. The product direction includes Comet-style agentic browsing, but implemented as explicit capabilities phased over milestones (core shell, automation, AI integration, polish/distribution).
 
-Current state: Phases 1 and 2 are complete. The project now has a runnable Electron browser shell with typed IPC, multi-tab runtime, omnibox routing, navigation controls, download telemetry, and session restore. The next focus is Phase 3 (home starter page).
+Current state: Phases 1 through 5 are complete. The project now has a runnable Electron browser shell with typed IPC, multi-tab runtime, omnibox routing, navigation controls, download telemetry, session restore, command palette, and quick-search popup flow. The next focus is Phase 6 (CDP integration).
 
 ## Constraints
 
@@ -77,4 +78,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-14 after Phase 2 completion*
+*Last updated: 2026-04-15 after Phase 5 completion*
