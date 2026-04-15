@@ -21,6 +21,12 @@ import type {
   AutomationConnectResult,
   AutomationDisconnectRequest,
   AutomationDisconnectResult,
+  LLMAdapterConfigState,
+  LLMGenerateRequest,
+  LLMGenerateResult,
+  LLMProviderConfigPatch,
+  LLMValidateConfigRequest,
+  LLMValidateConfigResult,
   RecorderStartRequest,
   RecorderStartResult,
   RecorderStatus,
@@ -81,7 +87,11 @@ export const IPC_CHANNELS = {
   homeListQuickLinks: 'home:listQuickLinks',
   homeUpsertQuickLink: 'home:upsertQuickLink',
   homeRemoveQuickLink: 'home:removeQuickLink',
-  homeListRecentAutomations: 'home:listRecentAutomations'
+  homeListRecentAutomations: 'home:listRecentAutomations',
+  llmGetConfig: 'llm:getConfig',
+  llmSaveConfig: 'llm:saveConfig',
+  llmValidateConfig: 'llm:validateConfig',
+  llmGenerate: 'llm:generate'
 } as const
 
 export type IpcChannel = (typeof IPC_CHANNELS)[keyof typeof IPC_CHANNELS]
@@ -150,4 +160,8 @@ export interface PathfinderApi {
   upsertQuickLink: (quickLink: QuickLink) => Promise<QuickLink[]>
   removeQuickLink: (quickLinkId: string) => Promise<QuickLink[]>
   listRecentAutomations: () => Promise<RecentAutomationPreview[]>
+  llmGetConfig: () => Promise<LLMAdapterConfigState>
+  llmSaveConfig: (patch: LLMProviderConfigPatch) => Promise<LLMAdapterConfigState>
+  llmValidateConfig: (request: LLMValidateConfigRequest) => Promise<LLMValidateConfigResult>
+  llmGenerate: (request: LLMGenerateRequest) => Promise<LLMGenerateResult>
 }

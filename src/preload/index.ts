@@ -76,7 +76,11 @@ const api: PathfinderApi = {
   listQuickLinks: async () => ipcRenderer.invoke(IPC_CHANNELS.homeListQuickLinks),
   upsertQuickLink: async (quickLink) => ipcRenderer.invoke(IPC_CHANNELS.homeUpsertQuickLink, quickLink),
   removeQuickLink: async (quickLinkId: string) => ipcRenderer.invoke(IPC_CHANNELS.homeRemoveQuickLink, quickLinkId),
-  listRecentAutomations: async () => ipcRenderer.invoke(IPC_CHANNELS.homeListRecentAutomations)
+  listRecentAutomations: async () => ipcRenderer.invoke(IPC_CHANNELS.homeListRecentAutomations),
+  llmGetConfig: async () => ipcRenderer.invoke(IPC_CHANNELS.llmGetConfig),
+  llmSaveConfig: async (patch) => ipcRenderer.invoke(IPC_CHANNELS.llmSaveConfig, patch),
+  llmValidateConfig: async (request) => ipcRenderer.invoke(IPC_CHANNELS.llmValidateConfig, request),
+  llmGenerate: async (request) => ipcRenderer.invoke(IPC_CHANNELS.llmGenerate, request)
 }
 
 contextBridge.exposeInMainWorld('pathfinder', api)
