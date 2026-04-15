@@ -24,20 +24,8 @@ export function CommandPalette({
   const [selectedIndex, setSelectedIndex] = useState(0)
 
   const matches = useMemo(() => rankCommands(commands, query), [commands, query])
-
-  useEffect(() => {
-    setSelectedIndex(0)
-  }, [query])
-
-  useEffect(() => {
-    if (matches.length === 0) {
-      return
-    }
-
-    if (selectedIndex > matches.length - 1) {
-      setSelectedIndex(matches.length - 1)
-    }
-  }, [matches, selectedIndex])
+  const maxIndex = Math.max(matches.length - 1, 0)
+  const activeIndex = Math.min(selectedIndex, maxIndex)
 
   useEffect(() => {
     if (!isOpen) {
@@ -45,11 +33,15 @@ export function CommandPalette({
     }
 
     inputRef.current?.focus()
-    setSelectedIndex(0)
   }, [isOpen])
 
   if (!isOpen) {
     return null
+  }
+
+  const handleQueryChange = (value: string): void => {
+    setSelectedIndex(0)
+    onQueryChange(value)
   }
 
   const handleInputKeyDown = (event: KeyboardEvent<HTMLInputElement>): void => {
@@ -59,7 +51,7 @@ export function CommandPalette({
         if (matches.length === 0) {
           return
         }
-        setSelectedIndex((current) => Math.min(current + 1, matches.length - 1))
+        setSelectedIndex((current) => Math.min(current + 1, maxIndex))
         return
       }
       case 'ArrowUp': {
@@ -72,7 +64,7 @@ export function CommandPalette({
       }
       case 'Enter': {
         event.preventDefault()
-        const selectedMatch = matches[selectedIndex]
+        const selectedMatch = matches[activeIndex]
         if (!selectedMatch) {
           return
         }
@@ -94,7 +86,7 @@ export function CommandPalette({
           className="command-palette__input"
           placeholder="Type a command"
           value={query}
-          onChange={(event) => onQueryChange(event.target.value)}
+          onChange={(event) => handleQueryChange(event.target.value)}
           onKeyDown={handleInputKeyDown}
           aria-label="Command palette input"
         />
@@ -109,7 +101,7 @@ export function CommandPalette({
               <li key={match.command.id}>
                 <button
                   type="button"
-                  className={`command-palette__item ${index === selectedIndex ? 'command-palette__item--active' : ''}`}
+                    className={`command-palette__item ${index === activeIndex ? 'command-palette__item--active' : ''}`}
                   onMouseEnter={() => setSelectedIndex(index)}
                   onClick={() => {
                     void onExecute(match.command, query)

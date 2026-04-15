@@ -106,7 +106,10 @@ export const rankCommands = (commands: CommandPaletteCommand[], query: string): 
     return left.originalIndex - right.originalIndex
   })
 
-  return matches.map(({ originalIndex: _originalIndex, ...match }) => match)
+  return matches.map((match) => ({
+    command: match.command,
+    score: match.score
+  }))
 }
 
 const requireActiveTabId = (activeTabId: string | null): string => {
