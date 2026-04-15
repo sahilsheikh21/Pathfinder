@@ -10,13 +10,17 @@ interface HomeStarterPageProps {
   draftQueryValue: string
   onDraftQueryChange: (value: string) => void
   onNavigate: (target: string) => void
+  recentRefreshToken: number
+  onRunRecentAutomation: (recentAutomation: RecentAutomationPreview) => Promise<void>
 }
 
 function HomeStarterPage({
   activeTabId,
   draftQueryValue,
   onDraftQueryChange,
-  onNavigate
+  onNavigate,
+  recentRefreshToken,
+  onRunRecentAutomation
 }: HomeStarterPageProps) {
   const [quickLinks, setQuickLinks] = useState<QuickLink[]>([])
   const [recentAutomations, setRecentAutomations] = useState<RecentAutomationPreview[]>([])
@@ -69,14 +73,13 @@ function HomeStarterPage({
         setQuickLinks([])
       })
 
-    // Placeholder contract for HOME-03: this list is sourced from execution history in a later phase.
     window.pathfinder
       .listRecentAutomations()
       .then(setRecentAutomations)
       .catch(() => {
         setRecentAutomations([])
       })
-  }, [activeTabId])
+  }, [activeTabId, recentRefreshToken])
 
   const handleAddLink = async (event: FormEvent<HTMLFormElement>): Promise<void> => {
     event.preventDefault()
@@ -176,9 +179,39 @@ function HomeStarterPage({
 
       <section className="home-starter__recent-automations" aria-label="Recent automations">
         {recentAutomations.length === 0 ? <p className="home-starter__recent-empty">No recent automations yet.</p> : null}
-        {Array.from({ length: 3 }).map((_, index) => (
-          <article key={`recent-slot-${index}`} className="home-starter__recent-slot" aria-disabled="true">
-            {recentAutomations[index]?.name ?? 'Reserved slot'}
+        {recentAutomations.slice(0, 3).map((recentAutomation) => (
+          <article
+            key={recentAutomation.id}
+            className={`home-starter__recent-slot ${
+              recentAutomation.workflowDeleted ? 'home-starter__recent-slot--deleted' : ''
+            }`}
+            aria-disabled={recentAutomation.workflowDeleted ? 'true' : undefined}
+          >
+            <h3>{recentAutomation.name}</h3>
+            <p>
+              <span className={`home-starter__recent-status home-starter__recent-status--${recentAutomation.status}`}>
+                {recentAutomation.status}
+              </span>
+              <span>
+                {recentAutomation.lastRunAt
+                  ? new Date(recentAutomation.lastRunAt).toLocaleString()
+                  : 'Never run'}
+              </span>
+            </p>
+            <p className="home-starter__recent-duration">
+              {recentAutomation.durationMs !== null && recentAutomation.durationMs !== undefined
+                ? `Duration: ${Math.max(0, Math.floor(recentAutomation.durationMs))} ms`
+                : 'Duration: n/a'}
+            </p>
+            <button
+              type="button"
+              disabled={recentAutomation.workflowDeleted === true || !recentAutomation.canRun}
+              onClick={async () => {
+                await onRunRecentAutomation(recentAutomation)
+              }}
+            >
+              {recentAutomation.workflowDeleted ? 'Deleted' : 'Run'}
+            </button>
           </article>
         ))}
       </section>

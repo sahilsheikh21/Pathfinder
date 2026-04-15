@@ -333,7 +333,10 @@ export interface RecentAutomationPreview {
   id: string
   name: string
   lastRunAt: string | null
-  status: 'never-run' | 'success' | 'failed'
+  status: 'never-run' | 'running' | 'success' | 'failed' | 'cancelled'
+  workflowDeleted?: boolean
+  canRun?: boolean
+  durationMs?: number | null
 }
 
 export type AutomationLibraryOrigin = 'recorded' | 'imported'

@@ -26,7 +26,8 @@ import {
   type AutomationHistoryStatus,
   type AutomationPlaybackStartRequest,
   type AutomationSidebarPreferences,
-  type AutomationSidebarPreferencesUpdateRequest
+  type AutomationSidebarPreferencesUpdateRequest,
+  type RecentAutomationPreview
 } from '../shared/browser'
 
 let browserRuntime: BrowserRuntime | null = null
@@ -566,9 +567,44 @@ function registerIpcHandlers(): void {
   ipcMain.handle(IPC_CHANNELS.homeRemoveQuickLink, (_event, quickLinkId: string) =>
     homeStore?.removeQuickLink(quickLinkId) ?? []
   )
-  ipcMain.handle(IPC_CHANNELS.homeListRecentAutomations, () =>
-    homeStore?.listRecentAutomations() ?? []
-  )
+  ipcMain.handle(IPC_CHANNELS.homeListRecentAutomations, () => {
+    if (!automationHistoryStore) {
+      return homeStore?.listRecentAutomations() ?? []
+    }
+
+    const entries = automationHistoryStore.list({ status: 'all', limit: 200 }).entries
+    const previews: RecentAutomationPreview[] = []
+    const seenWorkflowIds = new Set<string>()
+
+    for (const entry of entries) {
+      if (seenWorkflowIds.has(entry.workflowId)) {
+        continue
+      }
+
+      seenWorkflowIds.add(entry.workflowId)
+      const libraryItem = automationLibraryStore?.getById(entry.workflowId)
+      const workflowDeleted = entry.workflowDeleted === true
+      const canRun = Boolean(libraryItem?.workflowPath) && !workflowDeleted
+
+      previews.push({
+        id: entry.workflowId,
+        name: workflowDeleted
+          ? `${entry.workflowNameSnapshot} (workflow deleted)`
+          : entry.workflowNameSnapshot,
+        lastRunAt: entry.finishedAt ?? entry.startedAt,
+        status: entry.status,
+        workflowDeleted,
+        canRun,
+        durationMs: entry.durationMs
+      })
+
+      if (previews.length >= 6) {
+        break
+      }
+    }
+
+    return previews
+  })
 }
 
 function createWindow(): void {
