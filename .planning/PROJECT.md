@@ -19,6 +19,7 @@ Users can reliably automate and delegate multi-step browser tasks from a single 
 - ✓ Home starter page with custom new-tab UX, search-first behavior, and quick-link launch — Phase 3
 - ✓ Command palette with deterministic fuzzy matching and keyboard-first execution — Phase 4
 - ✓ Quick search popup window with hotkey toggle and active-tab navigation routing — Phase 5
+- ✓ CDP automation substrate with typed connect/disconnect/status bridge and single-owner lock semantics — Phase 6
 
 ### Active
 
@@ -40,7 +41,7 @@ Users can reliably automate and delegate multi-step browser tasks from a single 
 
 The project is based on prior research comparing browser engine and framework options. Chromium was selected for embeddability and automation compatibility, with Electron chosen for deep browser control, CDP access, and ecosystem maturity. The product direction includes Comet-style agentic browsing, but implemented as explicit capabilities phased over milestones (core shell, automation, AI integration, polish/distribution).
 
-Current state: Phases 1 through 5 are complete. The project now has a runnable Electron browser shell with typed IPC, multi-tab runtime, omnibox routing, navigation controls, download telemetry, session restore, command palette, and quick-search popup flow. The next focus is Phase 6 (CDP integration).
+Current state: Phases 1 through 6 are complete. The project now has a runnable Electron browser shell with typed IPC, multi-tab runtime, omnibox routing, navigation controls, download telemetry, session restore, command palette, quick-search popup flow, and a managed CDP automation bridge substrate. The next focus is Phase 7 (action recording).
 
 ## Constraints
 
@@ -78,4 +79,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-15 after Phase 5 completion*
+*Last updated: 2026-04-15 after Phase 6 completion*
