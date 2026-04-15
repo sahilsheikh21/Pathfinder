@@ -75,6 +75,13 @@ Success criteria:
 ### Phase 3: Home Starter Page
 Goal: Deliver the custom new-tab home experience.
 Requirements: HOME-01, HOME-02, HOME-03
+**Plans:** 3 plans
+
+Plans:
+- [ ] 03-01-PLAN.md - Build home route/runtime contracts and local home data store
+- [ ] 03-02-PLAN.md - Implement home starter page UI and query-only search flow
+- [ ] 03-03-PLAN.md - Add quick-link editing/launch behavior and recent-automation empty state
+
 Success criteria:
 1. New tab opens to branded starter page with greeting and current date.
 2. Home search box routes queries using configured default search engine.
