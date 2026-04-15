@@ -125,7 +125,7 @@ Success criteria:
 ### Phase 6: CDP Integration
 Goal: Introduce automation substrate by attaching Playwright Core through CDP.
 Requirements: AUTO-01
-Status: Planned (2026-04-15)
+Status: Complete (2026-04-15)
 **Plans:** 3/3 plans complete
 
 Plans:
