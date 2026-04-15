@@ -11,6 +11,7 @@ import {
   type DownloadState
 } from '../shared/browser'
 import BrowserTabStrip from './components/BrowserTabStrip'
+import AutomationPlaybackPrompt from './components/AutomationPlaybackPrompt'
 import CommandPalette from './components/CommandPalette'
 import DownloadShelf from './components/DownloadShelf'
 import HomeStarterPage from './components/HomeStarterPage'
@@ -279,6 +280,7 @@ function App() {
       if (initialResult.reason === 'missing-variables' && initialResult.requiredVariables?.length) {
         setPlaybackPromptVariables(initialResult.requiredVariables)
         setPendingPlaybackSourcePath(workflowPath)
+        setCommandPaletteError('')
         return
       }
 
@@ -492,6 +494,15 @@ function App() {
         onRequestClose={closeCommandPalette}
         onExecute={handleExecuteCommand}
         errorMessage={commandPaletteError}
+      />
+      <AutomationPlaybackPrompt
+        isOpen={playbackPromptVariables.length > 0 && Boolean(pendingPlaybackSourcePath)}
+        sourcePath={pendingPlaybackSourcePath}
+        variables={playbackPromptVariables}
+        onSubmit={async (values) => {
+          await submitPlaybackVariables(values)
+        }}
+        onCancel={cancelPlaybackPrompt}
       />
       <DownloadShelf downloads={downloads} />
     </main>
