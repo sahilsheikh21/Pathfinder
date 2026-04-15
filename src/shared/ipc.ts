@@ -5,6 +5,8 @@ import type {
   DownloadState,
   DownloadStatePayload,
   HomePreferences,
+  QuickSearchOpenRequest,
+  QuickSearchSubmitRequest,
   QuickLink,
   RecentAutomationPreview
 } from './browser'
@@ -24,6 +26,10 @@ export const IPC_CHANNELS = {
   browserGetDownloads: 'browser:getDownloads',
   browserOnState: 'browser:state',
   browserOnDownloads: 'browser:downloads',
+  quickSearchToggle: 'quickSearch:toggle',
+  quickSearchOpen: 'quickSearch:open',
+  quickSearchClose: 'quickSearch:close',
+  quickSearchSubmit: 'quickSearch:submit',
   homeGetPreferences: 'home:getPreferences',
   homeSavePreferences: 'home:savePreferences',
   homeListQuickLinks: 'home:listQuickLinks',
@@ -57,6 +63,10 @@ export interface PathfinderApi {
   listDownloads: () => Promise<DownloadState[]>
   onBrowserState: (callback: (payload: BrowserStatePayload) => void) => () => void
   onDownloadState: (callback: (payload: DownloadStatePayload) => void) => () => void
+  quickSearchToggle: () => Promise<void>
+  quickSearchOpen: (request?: QuickSearchOpenRequest) => Promise<void>
+  quickSearchClose: () => Promise<void>
+  quickSearchSubmit: (request: QuickSearchSubmitRequest) => Promise<void>
   getHomePreferences: () => Promise<HomePreferences>
   saveHomePreferences: (preferences: HomePreferences) => Promise<HomePreferences>
   listQuickLinks: () => Promise<QuickLink[]>

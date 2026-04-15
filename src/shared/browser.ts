@@ -52,6 +52,15 @@ export interface HomePreferences {
   searchTemplate: string
 }
 
+export interface QuickSearchOpenRequest {
+  query?: string
+}
+
+export interface QuickSearchSubmitRequest {
+  query: string
+  target: string
+}
+
 export interface QuickLink {
   id: string
   title: string
