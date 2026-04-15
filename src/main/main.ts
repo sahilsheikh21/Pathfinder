@@ -68,6 +68,43 @@ function registerIpcHandlers(): void {
     browserRuntime?.navigateActiveOrCreate(target)
     quickSearchWindowManager?.close()
   })
+  ipcMain.handle(IPC_CHANNELS.automationConnect, async (_event, request) => {
+    if (!automationCdpBridge) {
+      return {
+        ok: false,
+        sessionId: null,
+        state: 'error',
+        reason: 'attach-failed',
+        tabId: null
+      }
+    }
+
+    return automationCdpBridge.connect(request)
+  })
+  ipcMain.handle(IPC_CHANNELS.automationDisconnect, async (_event, request) => {
+    if (!automationCdpBridge) {
+      return {
+        ok: false,
+        state: 'disconnected',
+        reason: 'invalid-session'
+      }
+    }
+
+    return automationCdpBridge.disconnect(request)
+  })
+  ipcMain.handle(IPC_CHANNELS.automationGetStatus, () => {
+    if (!automationCdpBridge) {
+      return {
+        state: 'idle',
+        owner: null,
+        sessionId: null,
+        tabId: null,
+        reason: 'none'
+      }
+    }
+
+    return automationCdpBridge.getStatus()
+  })
   ipcMain.handle(IPC_CHANNELS.homeGetPreferences, () =>
     homeStore?.getHomePreferences() ?? { searchTemplate: DEFAULT_HOME_SEARCH_TEMPLATE }
   )
@@ -167,6 +204,7 @@ app.on('window-all-closed', () => {
 })
 
 app.on('before-quit', () => {
+  void automationCdpBridge?.shutdown()
   quickSearchWindowManager?.destroy()
 
   if (browserRuntime) {
