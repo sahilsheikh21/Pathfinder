@@ -179,6 +179,36 @@ export class BrowserRuntime {
     return this.createTab(normalizedTarget)
   }
 
+  resolveAutomationTarget(tabId?: string): {
+    tabId: string
+    url: string
+    webContentsId: number
+  } | null {
+    const resolvedTabId =
+      tabId && this.tabs.has(tabId)
+        ? tabId
+        : this.activeTabId && this.tabs.has(this.activeTabId)
+          ? this.activeTabId
+          : null
+
+    if (!resolvedTabId) {
+      return null
+    }
+
+    const tab = this.tabs.get(resolvedTabId)
+    if (!tab || tab.view.webContents.isDestroyed()) {
+      return null
+    }
+
+    const currentUrl = tab.view.webContents.getURL()
+
+    return {
+      tabId: resolvedTabId,
+      url: currentUrl || tab.url,
+      webContentsId: tab.view.webContents.id
+    }
+  }
+
   back(tabId: string): BrowserTabState[] {
     const tab = this.tabs.get(tabId)
     if (tab?.view.webContents.canGoBack()) {
