@@ -24,7 +24,7 @@
 | 4 | Command palette | 3/3 | Complete    | 2026-04-15 |
 | 5 | Quick search popup | 3/3 | Complete    | 2026-04-15 |
 | 6 | CDP integration | 3/3 | Complete    | 2026-04-15 |
-| 7 | Action recording | Capture user actions into workflow schema | AUTO-02 | 3 |
+| 7 | Action recording | 3/3 | Complete    | 2026-04-15 |
 | 8 | Automation playback | Execute workflows with variable injection and guardrails | AUTO-03 | 3 |
 | 9 | Sidebar and history | Deliver automation library and execution history UX | AUTO-04, AUTO-05, SIDE-01 | 4 |
 | 10 | LLM adapter layer | Integrate cloud/local providers behind one contract | AI-01 | 3 |
@@ -141,8 +141,8 @@ Success criteria:
 ### Phase 7: Action Recording
 Goal: Capture user interactions into reusable workflow definitions.
 Requirements: AUTO-02
-Status: Planned (2026-04-15)
-**Plans:** 3 plans
+Status: Complete (2026-04-15)
+**Plans:** 3/3 plans complete
 
 Plans:
 - [x] 07-01-PLAN.md - Define recorder workflow contracts and typed IPC/preload recorder surface
@@ -240,4 +240,4 @@ Success criteria:
 
 ---
 *Roadmap created: 2026-04-14*
-*Last updated: 2026-04-15 after phase 7 planning*
+*Last updated: 2026-04-15 after phase 7 execution*
