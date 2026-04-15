@@ -19,6 +19,12 @@ import {
   createAutomationHistoryStore,
   type AutomationHistoryStore
 } from './automationHistoryStore'
+import {
+  createProviderConfigStore,
+  type ProviderConfigStore
+} from './llm/providerConfigStore'
+import { createSecretStore, type SecretStore } from './llm/secretStore'
+import { createLLMAdapterService, type LLMAdapterService } from './llm/llmAdapterService'
 import { loadSessionSnapshot, saveSessionSnapshot } from './sessionStore'
 import { IPC_CHANNELS, type AppPlatformResponse, type AppVersionResponse } from '../shared/ipc'
 import {
@@ -27,6 +33,7 @@ import {
   type AutomationPlaybackStartRequest,
   type AutomationSidebarPreferences,
   type AutomationSidebarPreferencesUpdateRequest,
+  type LLMProviderId,
   type RecentAutomationPreview
 } from '../shared/browser'
 
@@ -40,6 +47,9 @@ let automationPlayback: AutomationPlaybackManager | null = null
 let automationLibraryStore: AutomationLibraryStore | null = null
 let automationHistoryStore: AutomationHistoryStore | null = null
 let automationUserDataPath: string | null = null
+let llmProviderConfigStore: ProviderConfigStore | null = null
+let llmSecretStore: SecretStore | null = null
+let llmAdapterService: LLMAdapterService | null = null
 
 const cdpPort = Number(process.env.PATHFINDER_CDP_PORT ?? '9222')
 const cdpEndpoint = `http://127.0.0.1:${cdpPort}`
@@ -168,6 +178,22 @@ const toErrorMessage = (error: unknown): string => {
 
   return 'Playback execution failed.'
 }
+
+const toRedactedMainErrorMessage = (error: unknown, fallback: string): string => {
+  const message = toErrorMessage(error)
+    .replace(/bearer\s+[a-z0-9._-]+/gi, 'bearer [redacted]')
+    .replace(/sk-[a-z0-9]+/gi, 'sk-[redacted]')
+    .trim()
+
+  return message || fallback
+}
+
+const toUnavailableLlmError = (provider: LLMProviderId, message: string) => ({
+  provider,
+  reason: 'provider-error' as const,
+  retryable: false,
+  message
+})
 
 const toStepFailure = (
   error: unknown
@@ -605,6 +631,102 @@ function registerIpcHandlers(): void {
 
     return previews
   })
+
+  ipcMain.handle(IPC_CHANNELS.llmGetConfig, () => {
+    if (!llmAdapterService) {
+      return {
+        config: {
+          provider: 'openai' as const,
+          model: 'gpt-4o-mini',
+          timeoutMs: 30000
+        },
+        secretPresent: false,
+        updatedAt: new Date().toISOString()
+      }
+    }
+
+    return llmAdapterService.getConfig()
+  })
+
+  ipcMain.handle(IPC_CHANNELS.llmSaveConfig, (_event, patch) => {
+    if (!llmAdapterService) {
+      return {
+        config: {
+          provider: 'openai' as const,
+          model: 'gpt-4o-mini',
+          timeoutMs: 30000
+        },
+        secretPresent: false,
+        updatedAt: new Date().toISOString()
+      }
+    }
+
+    try {
+      return llmAdapterService.saveConfig(patch)
+    } catch (error) {
+      throw new Error(toRedactedMainErrorMessage(error, 'Unable to save AI provider settings.'))
+    }
+  })
+
+  ipcMain.handle(IPC_CHANNELS.llmValidateConfig, async (_event, request) => {
+    const provider = request?.provider ?? llmAdapterService?.getConfig().config.provider ?? 'openai'
+
+    if (!llmAdapterService) {
+      return {
+        ok: false,
+        provider,
+        model: '',
+        checkedAt: new Date().toISOString(),
+        error: toUnavailableLlmError(provider, 'AI adapter service is not available.')
+      }
+    }
+
+    try {
+      return await llmAdapterService.validateConfig(request)
+    } catch (error) {
+      return {
+        ok: false,
+        provider,
+        model: llmAdapterService.getConfig().config.model,
+        checkedAt: new Date().toISOString(),
+        error: toUnavailableLlmError(
+          provider,
+          toRedactedMainErrorMessage(error, 'AI adapter validation failed.')
+        )
+      }
+    }
+  })
+
+  ipcMain.handle(IPC_CHANNELS.llmGenerate, async (_event, request) => {
+    const provider = request?.provider ?? llmAdapterService?.getConfig().config.provider ?? 'openai'
+
+    if (!llmAdapterService) {
+      return {
+        ok: false,
+        provider,
+        model: request?.model ?? '',
+        text: '',
+        finishReason: 'unknown' as const,
+        error: toUnavailableLlmError(provider, 'AI adapter service is not available.')
+      }
+    }
+
+    try {
+      return await llmAdapterService.generate(request)
+    } catch (error) {
+      return {
+        ok: false,
+        provider,
+        model: request?.model ?? llmAdapterService.getConfig().config.model,
+        text: '',
+        finishReason: 'unknown' as const,
+        error: toUnavailableLlmError(
+          provider,
+          toRedactedMainErrorMessage(error, 'AI generation failed.')
+        )
+      }
+    }
+  })
 }
 
 function createWindow(): void {
@@ -613,6 +735,12 @@ function createWindow(): void {
   homeStore = createHomeStore(userDataPath)
   automationLibraryStore = createAutomationLibraryStore(userDataPath)
   automationHistoryStore = createAutomationHistoryStore(userDataPath)
+  llmProviderConfigStore = createProviderConfigStore(userDataPath)
+  llmSecretStore = createSecretStore(userDataPath)
+  llmAdapterService = createLLMAdapterService({
+    configStore: llmProviderConfigStore,
+    secretStore: llmSecretStore
+  })
 
   const mainWindow = new BrowserWindow({
     width: 1280,
