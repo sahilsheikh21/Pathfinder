@@ -28,6 +28,9 @@ export interface BrowserCommandDeps {
   stopRecording: () => Promise<void>
   startPlayback?: (workflowPath: string) => Promise<void>
   cancelPlayback?: () => Promise<void>
+  toggleSidebar?: () => Promise<void>
+  openSidebarLibrary?: () => Promise<void>
+  openSidebarHistory?: () => Promise<void>
   activeTabId: string | null
 }
 
@@ -218,6 +221,45 @@ export const createBrowserCommands = (deps: BrowserCommandDeps): CommandPaletteC
         const value = requireInput(input, 'Provide a search query.')
         const resolution = resolveOmniboxInput(value, DEFAULT_SEARCH_TEMPLATE)
         await deps.navigateTarget(resolution.target)
+      }
+    },
+    {
+      id: 'sidebar.toggle',
+      title: 'Sidebar: Toggle',
+      description: 'Toggle sidebar open/collapsed state.',
+      keywords: ['sidebar', 'toggle', 'panel', 'automation'],
+      run: async () => {
+        if (!deps.toggleSidebar) {
+          throw new Error('Sidebar controls are unavailable.')
+        }
+
+        await deps.toggleSidebar()
+      }
+    },
+    {
+      id: 'sidebar.open.library',
+      title: 'Sidebar: Open Saved Automations',
+      description: 'Open sidebar and focus Saved Automations section.',
+      keywords: ['sidebar', 'library', 'automations', 'saved', 'open'],
+      run: async () => {
+        if (!deps.openSidebarLibrary) {
+          throw new Error('Sidebar controls are unavailable.')
+        }
+
+        await deps.openSidebarLibrary()
+      }
+    },
+    {
+      id: 'sidebar.open.history',
+      title: 'Sidebar: Open History',
+      description: 'Open sidebar and focus run history section.',
+      keywords: ['sidebar', 'history', 'runs', 'open'],
+      run: async () => {
+        if (!deps.openSidebarHistory) {
+          throw new Error('Sidebar controls are unavailable.')
+        }
+
+        await deps.openSidebarHistory()
       }
     },
     {
