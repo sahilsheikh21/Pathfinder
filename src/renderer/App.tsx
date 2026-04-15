@@ -5,6 +5,7 @@ import {
   type DownloadState
 } from '../shared/browser'
 import BrowserTabStrip from './components/BrowserTabStrip'
+import CommandPalette from './components/CommandPalette'
 import DownloadShelf from './components/DownloadShelf'
 import HomeStarterPage from './components/HomeStarterPage'
 import NavigationBar from './components/NavigationBar'
@@ -15,6 +16,9 @@ function App() {
   const [activeTabId, setActiveTabId] = useState<string | null>(null)
   const [downloads, setDownloads] = useState<DownloadState[]>([])
   const [homeDraftByTabId, setHomeDraftByTabId] = useState<Record<string, string>>({})
+  const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false)
+  const [commandPaletteQuery, setCommandPaletteQuery] = useState('')
+  const [commandPaletteError, setCommandPaletteError] = useState('')
 
   const activeTab = useMemo(() => {
     return tabs.find((tab) => tab.id === activeTabId) ?? null
@@ -159,6 +163,48 @@ function App() {
     }))
   }
 
+  const openCommandPalette = (): void => {
+    setCommandPaletteQuery('')
+    setCommandPaletteError('')
+    setIsCommandPaletteOpen(true)
+  }
+
+  useEffect(() => {
+    const isEditableTarget = (target: EventTarget | null): boolean => {
+      if (!(target instanceof HTMLElement)) {
+        return false
+      }
+
+      return (
+        target.tagName === 'INPUT' ||
+        target.tagName === 'TEXTAREA' ||
+        target.isContentEditable
+      )
+    }
+
+    const handleKeyDown = (event: KeyboardEvent): void => {
+      if (!event.ctrlKey || isEditableTarget(event.target)) {
+        return
+      }
+
+      const key = event.key.toLowerCase()
+      const opensWithCtrlShiftP = event.shiftKey && key === 'p'
+      const opensWithCtrlK = key === 'k'
+
+      if (!opensWithCtrlShiftP && !opensWithCtrlK) {
+        return
+      }
+
+      event.preventDefault()
+      openCommandPalette()
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [])
+
   return (
     <main className="browser-shell">
       <section className="browser-chrome">
@@ -190,6 +236,17 @@ function App() {
           />
         ) : null}
       </section>
+      <CommandPalette
+        isOpen={isCommandPaletteOpen}
+        commands={[]}
+        query={commandPaletteQuery}
+        onQueryChange={setCommandPaletteQuery}
+        onRequestClose={() => setIsCommandPaletteOpen(false)}
+        onExecute={async () => {
+          return
+        }}
+        errorMessage={commandPaletteError}
+      />
       <DownloadShelf downloads={downloads} />
     </main>
   )
