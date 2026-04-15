@@ -8,6 +8,7 @@ import {
   type QuickSearchWindowManager
 } from './quickSearchWindow'
 import { createAutomationCdpBridge, type AutomationCdpBridge } from './cdpBridge'
+import { createActionRecorder, type ActionRecorder } from './actionRecorder'
 import { loadSessionSnapshot, saveSessionSnapshot } from './sessionStore'
 import { IPC_CHANNELS, type AppPlatformResponse, type AppVersionResponse } from '../shared/ipc'
 import { DEFAULT_HOME_SEARCH_TEMPLATE } from '../shared/browser'
@@ -17,6 +18,7 @@ let downloadManager: DownloadManager | null = null
 let homeStore: HomeStore | null = null
 let quickSearchWindowManager: QuickSearchWindowManager | null = null
 let automationCdpBridge: AutomationCdpBridge | null = null
+let actionRecorder: ActionRecorder | null = null
 
 const cdpPort = Number(process.env.PATHFINDER_CDP_PORT ?? '9222')
 const cdpEndpoint = `http://127.0.0.1:${cdpPort}`
@@ -105,6 +107,39 @@ function registerIpcHandlers(): void {
 
     return automationCdpBridge.getStatus()
   })
+  ipcMain.handle(IPC_CHANNELS.automationRecordStart, (_event, request) => {
+    if (!actionRecorder) {
+      return {
+        ok: false,
+        sessionId: null,
+        state: 'error',
+        reason: 'failed',
+        tabId: null
+      }
+    }
+
+    return actionRecorder.start(request)
+  })
+  ipcMain.handle(IPC_CHANNELS.automationRecordStop, (_event, request) => {
+    if (!actionRecorder) {
+      return {
+        ok: false,
+        state: 'error',
+        reason: 'not-recording'
+      }
+    }
+
+    return actionRecorder.stop(request)
+  })
+  ipcMain.handle(IPC_CHANNELS.automationRecordStatus, () => {
+    return actionRecorder?.getStatus() ?? {
+      state: 'idle',
+      sessionId: null,
+      tabId: null,
+      reason: 'none',
+      startedAt: null
+    }
+  })
   ipcMain.handle(IPC_CHANNELS.homeGetPreferences, () =>
     homeStore?.getHomePreferences() ?? { searchTemplate: DEFAULT_HOME_SEARCH_TEMPLATE }
   )
@@ -164,6 +199,24 @@ function createWindow(): void {
     resolveTarget: (tabId) => browserRuntime?.resolveAutomationTarget(tabId) ?? null
   })
 
+  actionRecorder = createActionRecorder({
+    resolveTarget: (tabId) => {
+      const target = browserRuntime?.resolveAutomationTarget(tabId)
+      if (!target) {
+        return null
+      }
+
+      return {
+        tabId: target.tabId,
+        url: target.url
+      }
+    }
+  })
+
+  browserRuntime.onTabClosed((tabId) => {
+    actionRecorder?.stopForTargetLoss(tabId)
+  })
+
   downloadManager = new DownloadManager(
     (payload) => {
       mainWindow.webContents.send('browser:downloads', payload)
@@ -205,6 +258,7 @@ app.on('window-all-closed', () => {
 
 app.on('before-quit', () => {
   void automationCdpBridge?.shutdown()
+  actionRecorder?.shutdown()
   quickSearchWindowManager?.destroy()
 
   if (browserRuntime) {

@@ -27,6 +27,8 @@ export class BrowserRuntime {
 
   private activeTabId: string | null = null
 
+  private onTabClosedCallbacks: Array<(tabId: string) => void> = []
+
   constructor(
     private readonly mainWindow: BrowserWindow,
     private readonly onStateChange: (payload: BrowserStatePayload) => void
@@ -127,6 +129,9 @@ export class BrowserRuntime {
     const removedIndex = this.tabOrder.findIndex((id) => id === tabId)
     this.tabOrder.splice(removedIndex, 1)
     this.tabs.delete(tabId)
+    this.onTabClosedCallbacks.forEach((callback) => {
+      callback(tabId)
+    })
 
     if (this.activeTabId === tabId) {
       this.mainWindow.contentView.removeChildView(tab.view)
@@ -145,6 +150,14 @@ export class BrowserRuntime {
 
     this.emitState()
     return this.getTabSnapshotList()
+  }
+
+  onTabClosed(callback: (tabId: string) => void): () => void {
+    this.onTabClosedCallbacks.push(callback)
+
+    return (): void => {
+      this.onTabClosedCallbacks = this.onTabClosedCallbacks.filter((candidate) => candidate !== callback)
+    }
   }
 
   navigate(request: BrowserNavigationRequest): BrowserTabState[] {
