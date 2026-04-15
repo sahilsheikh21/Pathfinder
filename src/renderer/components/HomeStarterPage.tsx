@@ -1,11 +1,14 @@
-import type { FormEvent } from 'react'
-import type { QuickLink, RecentAutomationPreview } from '../../shared/browser'
+import { useState, type FormEvent } from 'react'
+import {
+  DEFAULT_HOME_SEARCH_TEMPLATE,
+  type QuickLink,
+  type RecentAutomationPreview
+} from '../../shared/browser'
 
 interface HomeStarterPageProps {
   activeTabId: string | null
   draftQueryValue: string
   onDraftQueryChange: (value: string) => void
-  onSearchSubmit: (query: string) => void
   quickLinks: QuickLink[]
   recentAutomations: RecentAutomationPreview[]
 }
@@ -14,10 +17,10 @@ function HomeStarterPage({
   activeTabId,
   draftQueryValue,
   onDraftQueryChange,
-  onSearchSubmit,
   quickLinks,
   recentAutomations
 }: HomeStarterPageProps) {
+  const [hint, setHint] = useState('')
   const now = new Date()
   const greeting = now.getHours() < 12 ? 'Good morning' : now.getHours() < 18 ? 'Good afternoon' : 'Good evening'
   const formattedDate = now.toLocaleDateString(undefined, {
@@ -26,9 +29,28 @@ function HomeStarterPage({
     day: 'numeric'
   })
 
-  const handleSubmit = (event: FormEvent<HTMLFormElement>): void => {
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>): Promise<void> => {
     event.preventDefault()
-    onSearchSubmit(draftQueryValue)
+
+    const trimmedQuery = draftQueryValue.trim()
+    if (!trimmedQuery) {
+      setHint('Type a search query to continue.')
+      return
+    }
+
+    let searchTemplate = DEFAULT_HOME_SEARCH_TEMPLATE
+    try {
+      const preferences = await window.pathfinder.getHomePreferences()
+      if (typeof preferences.searchTemplate === 'string' && preferences.searchTemplate.includes('{query}')) {
+        searchTemplate = preferences.searchTemplate
+      }
+    } catch {
+      searchTemplate = DEFAULT_HOME_SEARCH_TEMPLATE
+    }
+
+    const target = searchTemplate.replace('{query}', encodeURIComponent(trimmedQuery))
+    await window.pathfinder.createTab(target)
+    setHint('')
   }
 
   return (
@@ -47,6 +69,9 @@ function HomeStarterPage({
         />
         <button type="submit">Search</button>
       </form>
+      <p className="home-starter__hint" role="status">
+        {hint}
+      </p>
 
       <section className="home-starter__quick-links" aria-label="Quick links">
         {quickLinks.slice(0, 6).map((quickLink) => (

@@ -18,7 +18,7 @@ function App() {
   const [downloads, setDownloads] = useState<DownloadState[]>([])
   const [quickLinks, setQuickLinks] = useState<QuickLink[]>([])
   const [recentAutomations, setRecentAutomations] = useState<RecentAutomationPreview[]>([])
-  const [homeDraftQuery, setHomeDraftQuery] = useState('')
+  const [homeDraftByTabId, setHomeDraftByTabId] = useState<Record<string, string>>({})
 
   const activeTab = useMemo(() => {
     return tabs.find((tab) => tab.id === activeTabId) ?? null
@@ -164,8 +164,17 @@ function App() {
     })
   }, [isHomeTab])
 
-  const handleHomeSearchSubmit = (query: string): void => {
-    setHomeDraftQuery(query)
+  const homeDraftQuery = activeTabId ? (homeDraftByTabId[activeTabId] ?? '') : ''
+
+  const handleHomeDraftQueryChange = (value: string): void => {
+    if (!activeTabId) {
+      return
+    }
+
+    setHomeDraftByTabId((current) => ({
+      ...current,
+      [activeTabId]: value
+    }))
   }
 
   return (
@@ -194,8 +203,7 @@ function App() {
           <HomeStarterPage
             activeTabId={activeTabId}
             draftQueryValue={homeDraftQuery}
-            onDraftQueryChange={setHomeDraftQuery}
-            onSearchSubmit={handleHomeSearchSubmit}
+            onDraftQueryChange={handleHomeDraftQueryChange}
             quickLinks={quickLinks}
             recentAutomations={recentAutomations}
           />
