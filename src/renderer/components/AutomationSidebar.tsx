@@ -13,6 +13,7 @@ interface AutomationSidebarProps {
   onResizeWidth: (width: number) => void
   libraryContent: React.ReactNode
   historyContent: React.ReactNode
+  aiContent: React.ReactNode
 }
 
 const SECTION_ORDER: AutomationSidebarSection[] = ['library', 'history', 'ai-chat']
@@ -40,7 +41,8 @@ function AutomationSidebar({
   onSetActiveSection,
   onResizeWidth,
   libraryContent,
-  historyContent
+  historyContent,
+  aiContent
 }: AutomationSidebarProps) {
   const navButtonRefs = useRef<Array<HTMLButtonElement | null>>([])
 
@@ -67,15 +69,7 @@ function AutomationSidebar({
       return historyContent
     }
 
-    return (
-      <article className="automation-sidebar-empty-card automation-sidebar-ai-placeholder">
-        <h3>AI Chat is coming soon</h3>
-        <p>
-          The section is reserved in phase 9. Chat actions are intentionally disabled while
-          sidebar library and history workflows are finalized.
-        </p>
-      </article>
-    )
+    return aiContent
   }
 
   return (

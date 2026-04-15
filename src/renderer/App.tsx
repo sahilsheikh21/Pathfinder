@@ -10,6 +10,8 @@ import {
   type AutomationPlaybackVariablePrompt,
   type AutomationSidebarPreferences,
   type AutomationSidebarSection,
+  type LLMAdapterConfigState,
+  type LLMProviderId,
   HOME_STARTER_URL,
   type RecorderStartRequest,
   type RecorderStatus,
@@ -106,6 +108,14 @@ function App() {
   })
   const [sidebarPreferences, setSidebarPreferences] =
     useState<AutomationSidebarPreferences>(DEFAULT_SIDEBAR_PREFERENCES)
+  const [llmConfigState, setLlmConfigState] = useState<LLMAdapterConfigState | null>(null)
+  const [aiProvider, setAiProvider] = useState<LLMProviderId>('openai')
+  const [aiModel, setAiModel] = useState('')
+  const [aiEndpoint, setAiEndpoint] = useState('')
+  const [aiSecretDraft, setAiSecretDraft] = useState('')
+  const [aiStatusMessage, setAiStatusMessage] = useState('AI provider settings are loading...')
+  const [aiStatusTone, setAiStatusTone] = useState<'neutral' | 'success' | 'error'>('neutral')
+  const [aiBusyState, setAiBusyState] = useState<'idle' | 'saving' | 'validating'>('idle')
   const [isOverlayMode, setIsOverlayMode] = useState(() => window.innerWidth < 980)
   const [isOverlayOpen, setIsOverlayOpen] = useState(false)
   const [libraryItems, setLibraryItems] = useState<AutomationLibraryItem[]>([])
@@ -135,9 +145,9 @@ function App() {
     return {
       library: libraryItems.length,
       history: runningCount + failedCount,
-      'ai-chat': 0
+      'ai-chat': aiStatusTone === 'error' ? 1 : 0
     } satisfies Partial<Record<AutomationSidebarSection, number>>
-  }, [historyEntries, libraryItems.length])
+  }, [aiStatusTone, historyEntries, libraryItems.length])
 
   const persistSidebarPreferences = useCallback(
     (patch: Partial<AutomationSidebarPreferences>): void => {
@@ -162,6 +172,87 @@ function App() {
     },
     []
   )
+
+  const syncAiDraftFromState = useCallback((state: LLMAdapterConfigState): void => {
+    setLlmConfigState(state)
+    setAiProvider(state.config.provider)
+    setAiModel(state.config.model)
+    setAiEndpoint(state.config.endpoint ?? '')
+  }, [])
+
+  const refreshLlmConfig = useCallback(async (): Promise<void> => {
+    const state = await window.pathfinder.llmGetConfig()
+    syncAiDraftFromState(state)
+    setAiStatusTone('neutral')
+    setAiStatusMessage(
+      state.secretPresent
+        ? 'AI provider settings loaded. Secret is configured.'
+        : 'AI provider settings loaded. Add a key/token to enable provider calls.'
+    )
+  }, [syncAiDraftFromState])
+
+  const saveLlmConfig = useCallback(async (): Promise<void> => {
+    if (!aiModel.trim()) {
+      setAiStatusTone('error')
+      setAiStatusMessage('Model is required before saving AI settings.')
+      return
+    }
+
+    setAiBusyState('saving')
+    setAiStatusTone('neutral')
+    setAiStatusMessage('Saving AI provider settings...')
+
+    try {
+      const nextState = await window.pathfinder.llmSaveConfig({
+        provider: aiProvider,
+        model: aiModel.trim(),
+        endpoint: aiEndpoint.trim() ? aiEndpoint.trim() : null,
+        secret: aiSecretDraft.trim()
+          ? { mode: 'set', value: aiSecretDraft.trim() }
+          : { mode: 'unchanged' }
+      })
+
+      syncAiDraftFromState(nextState)
+      setAiSecretDraft('')
+      setAiStatusTone('success')
+      setAiStatusMessage(
+        nextState.secretPresent
+          ? `Saved ${nextState.config.provider} settings. Secret is configured.`
+          : `Saved ${nextState.config.provider} settings. No secret is configured yet.`
+      )
+    } catch (error) {
+      setAiStatusTone('error')
+      setAiStatusMessage(error instanceof Error ? error.message : 'Failed to save AI settings.')
+    } finally {
+      setAiBusyState('idle')
+    }
+  }, [aiEndpoint, aiModel, aiProvider, aiSecretDraft, syncAiDraftFromState])
+
+  const validateLlmConfig = useCallback(async (): Promise<void> => {
+    setAiBusyState('validating')
+    setAiStatusTone('neutral')
+    setAiStatusMessage(`Validating ${aiProvider} provider connection...`)
+
+    try {
+      const result = await window.pathfinder.llmValidateConfig({ provider: aiProvider })
+      if (result.ok) {
+        setAiStatusTone('success')
+        setAiStatusMessage(
+          `Validation succeeded for ${result.provider} (${result.model})${typeof result.latencyMs === 'number' ? ` in ${result.latencyMs}ms` : ''}.`
+        )
+      } else {
+        setAiStatusTone('error')
+        setAiStatusMessage(
+          result.error?.message ?? `Validation failed for ${result.provider}.`
+        )
+      }
+    } catch (error) {
+      setAiStatusTone('error')
+      setAiStatusMessage(error instanceof Error ? error.message : 'Validation failed.')
+    } finally {
+      setAiBusyState('idle')
+    }
+  }, [aiProvider])
 
   const refreshLibrary = useCallback(async (): Promise<void> => {
     const result = await window.pathfinder.automationLibraryList({
@@ -338,6 +429,23 @@ function App() {
       isMounted = false
     }
   }, [])
+
+  useEffect(() => {
+    let isMounted = true
+
+    void refreshLlmConfig().catch(() => {
+        if (!isMounted) {
+          return
+        }
+
+        setAiStatusTone('error')
+        setAiStatusMessage('Unable to load AI provider settings.')
+      })
+
+    return () => {
+      isMounted = false
+    }
+  }, [refreshLlmConfig])
 
   useEffect(() => {
     const syncOverlayMode = (): void => {
@@ -679,6 +787,15 @@ function App() {
     [isOverlayMode, persistSidebarPreferences]
   )
 
+  const openAiConfigFromCommand = useCallback(async (): Promise<void> => {
+    await openSidebarSectionFromCommand('ai-chat')
+  }, [openSidebarSectionFromCommand])
+
+  const validateAiConfigFromCommand = useCallback(async (): Promise<void> => {
+    await openSidebarSectionFromCommand('ai-chat')
+    await validateLlmConfig()
+  }, [openSidebarSectionFromCommand, validateLlmConfig])
+
   const runRecentAutomation = useCallback(
     async (preview: { id: string; canRun?: boolean; name: string }): Promise<void> => {
       if (!preview.canRun) {
@@ -728,6 +845,8 @@ function App() {
     toggleSidebar: toggleSidebarFromCommand,
     openSidebarLibrary: async () => openSidebarSectionFromCommand('library'),
     openSidebarHistory: async () => openSidebarSectionFromCommand('history'),
+    openAiConfig: openAiConfigFromCommand,
+    validateAiConfig: validateAiConfigFromCommand,
     activeTabId
   })
 
@@ -969,6 +1088,111 @@ function App() {
               onRemove={removeHistoryEntry}
               onClear={clearHistoryEntries}
             />
+          }
+          aiContent={
+            <section className="automation-sidebar-ai-config" aria-label="AI provider configuration">
+              <header className="automation-sidebar-library__header">
+                <div className="automation-sidebar-library__actions">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      void saveLlmConfig()
+                    }}
+                    disabled={aiBusyState !== 'idle'}
+                  >
+                    {aiBusyState === 'saving' ? 'Saving...' : 'Save Settings'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      void validateLlmConfig()
+                    }}
+                    disabled={aiBusyState !== 'idle'}
+                  >
+                    {aiBusyState === 'validating' ? 'Validating...' : 'Validate Connection'}
+                  </button>
+                </div>
+              </header>
+
+              <div className="automation-sidebar-library__filters">
+                <label>
+                  <span>Provider</span>
+                  <select
+                    value={aiProvider}
+                    onChange={(event) => {
+                      const provider = event.target.value as LLMProviderId
+                      setAiProvider(provider)
+                      void window.pathfinder
+                        .llmSaveConfig({
+                          provider,
+                          secret: { mode: 'unchanged' }
+                        })
+                        .then((state) => {
+                          syncAiDraftFromState(state)
+                          setAiStatusTone('neutral')
+                          setAiStatusMessage(
+                            state.secretPresent
+                              ? `Loaded ${state.config.provider} settings.`
+                              : `Loaded ${state.config.provider} settings. No secret configured.`
+                          )
+                        })
+                        .catch(() => {
+                          setAiStatusTone('error')
+                          setAiStatusMessage('Unable to switch provider settings.')
+                        })
+                    }}
+                  >
+                    <option value="openai">OpenAI (cloud)</option>
+                    <option value="ollama">Ollama (local)</option>
+                  </select>
+                </label>
+                <label>
+                  <span>Model</span>
+                  <input
+                    type="text"
+                    value={aiModel}
+                    onChange={(event) => setAiModel(event.target.value)}
+                    placeholder="gpt-4o-mini or llama3.2"
+                  />
+                </label>
+                <label>
+                  <span>Endpoint/Base URL (optional)</span>
+                  <input
+                    type="text"
+                    value={aiEndpoint}
+                    onChange={(event) => setAiEndpoint(event.target.value)}
+                    placeholder="http://127.0.0.1:11434"
+                  />
+                </label>
+                <label>
+                  <span>{aiProvider === 'openai' ? 'API Key' : 'Access Token (optional)'}</span>
+                  <input
+                    type="password"
+                    value={aiSecretDraft}
+                    onChange={(event) => setAiSecretDraft(event.target.value)}
+                    placeholder={
+                      aiProvider === 'openai'
+                        ? 'sk-...'
+                        : 'Optional bearer token for protected endpoint'
+                    }
+                    autoComplete="new-password"
+                  />
+                </label>
+              </div>
+
+              <article className="automation-sidebar-empty-card automation-sidebar-ai-placeholder">
+                <h3>AI Adapter Status</h3>
+                <p>{aiStatusMessage}</p>
+                <p>
+                  Selected provider: <strong>{llmConfigState?.config.provider ?? aiProvider}</strong>
+                  {' · '}
+                  Secret configured: <strong>{llmConfigState?.secretPresent ? 'Yes' : 'No'}</strong>
+                </p>
+                <button type="button" disabled>
+                  Chat execution is not in phase 10
+                </button>
+              </article>
+            </section>
           }
         />
 
