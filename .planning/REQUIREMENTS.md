@@ -15,9 +15,9 @@
 
 ### Home and Command UX
 
-- [ ] **HOME-01**: User sees a custom home starter page on new tab with greeting and current date.
-- [ ] **HOME-02**: User can search the web from the home page using the configured default search engine.
-- [ ] **HOME-03**: User can launch quick links and recently used automations directly from the home page.
+- [x] **HOME-01**: User sees a custom home starter page on new tab with greeting and current date.
+- [x] **HOME-02**: User can search the web from the home page using the configured default search engine.
+- [x] **HOME-03**: User can launch quick links and recently used automations directly from the home page.
 - [ ] **CMD-01**: User can open a command palette via keyboard shortcuts and execute browser commands.
 - [ ] **CMD-02**: User can find commands using fuzzy search with command descriptions and argument hints.
 - [ ] **QSR-01**: User can toggle a quick-search popup window with a hotkey and dismiss it with Escape.
@@ -78,9 +78,9 @@
 | BROW-03 | Phase 2 | Complete |
 | BROW-04 | Phase 2 | Complete |
 | BROW-05 | Phase 2 | Complete |
-| HOME-01 | Phase 3 | Pending |
-| HOME-02 | Phase 3 | Pending |
-| HOME-03 | Phase 3 | Pending |
+| HOME-01 | Phase 3 | Complete |
+| HOME-02 | Phase 3 | Complete |
+| HOME-03 | Phase 3 | Complete |
 | CMD-01 | Phase 4 | Pending |
 | CMD-02 | Phase 4 | Pending |
 | QSR-01 | Phase 5 | Pending |
