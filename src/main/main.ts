@@ -9,6 +9,7 @@ import {
 } from './quickSearchWindow'
 import { createAutomationCdpBridge, type AutomationCdpBridge } from './cdpBridge'
 import { createActionRecorder, type ActionRecorder } from './actionRecorder'
+import { createAutomationPlaybackManager, type AutomationPlaybackManager } from './automationPlayback'
 import { loadSessionSnapshot, saveSessionSnapshot } from './sessionStore'
 import { IPC_CHANNELS, type AppPlatformResponse, type AppVersionResponse } from '../shared/ipc'
 import { DEFAULT_HOME_SEARCH_TEMPLATE } from '../shared/browser'
@@ -19,9 +20,64 @@ let homeStore: HomeStore | null = null
 let quickSearchWindowManager: QuickSearchWindowManager | null = null
 let automationCdpBridge: AutomationCdpBridge | null = null
 let actionRecorder: ActionRecorder | null = null
+let automationPlayback: AutomationPlaybackManager | null = null
 
 const cdpPort = Number(process.env.PATHFINDER_CDP_PORT ?? '9222')
 const cdpEndpoint = `http://127.0.0.1:${cdpPort}`
+
+const toErrorMessage = (error: unknown): string => {
+  if (error instanceof Error && error.message.trim()) {
+    return error.message
+  }
+
+  if (typeof error === 'string' && error.trim()) {
+    return error
+  }
+
+  return 'Playback execution failed.'
+}
+
+const toStepFailure = (
+  error: unknown
+):
+  | {
+      stepId: string
+      seq: number
+      action: 'navigate' | 'click' | 'type' | 'wait'
+      reason: 'internal-error'
+      message: string
+    }
+  | undefined => {
+  if (typeof error !== 'object' || error === null) {
+    return undefined
+  }
+
+  const candidate = error as {
+    stepId?: unknown
+    seq?: unknown
+    action?: unknown
+    message?: unknown
+  }
+
+  if (
+    typeof candidate.stepId !== 'string' ||
+    typeof candidate.seq !== 'number' ||
+    !['navigate', 'click', 'type', 'wait'].includes(String(candidate.action))
+  ) {
+    return undefined
+  }
+
+  return {
+    stepId: candidate.stepId,
+    seq: candidate.seq,
+    action: candidate.action as 'navigate' | 'click' | 'type' | 'wait',
+    reason: 'internal-error',
+    message:
+      typeof candidate.message === 'string' && candidate.message.trim()
+        ? candidate.message
+        : 'Playback execution failed.'
+  }
+}
 
 app.commandLine.appendSwitch('remote-debugging-port', String(cdpPort))
 
@@ -140,6 +196,66 @@ function registerIpcHandlers(): void {
       startedAt: null
     }
   })
+  ipcMain.handle(IPC_CHANNELS.automationPlaybackStart, async (_event, request) => {
+    if (!automationPlayback) {
+      return {
+        ok: false,
+        runId: null,
+        state: 'idle',
+        reason: 'failed',
+        message: 'Playback manager is not available.'
+      }
+    }
+
+    try {
+      return await automationPlayback.start(request)
+    } catch (error) {
+      return {
+        ok: false,
+        runId: null,
+        state: 'failed',
+        reason: 'failed',
+        message: toErrorMessage(error),
+        ...(toStepFailure(error) ? { failure: toStepFailure(error) } : {})
+      }
+    }
+  })
+  ipcMain.handle(IPC_CHANNELS.automationPlaybackStatus, () => {
+    return (
+      automationPlayback?.getStatus() ?? {
+        state: 'idle',
+        runId: null,
+        source: null,
+        tabId: null,
+        policy: 'stop-on-error',
+        startedAt: null,
+        finishedAt: null,
+        summary: null,
+        failure: null
+      }
+    )
+  })
+  ipcMain.handle(IPC_CHANNELS.automationPlaybackCancel, async (_event, request) => {
+    if (!automationPlayback) {
+      return {
+        ok: false,
+        state: 'idle',
+        reason: 'not-running',
+        message: 'Playback manager is not available.'
+      }
+    }
+
+    try {
+      return await automationPlayback.cancel(request)
+    } catch (error) {
+      return {
+        ok: false,
+        state: 'failed',
+        reason: 'failed',
+        message: toErrorMessage(error)
+      }
+    }
+  })
   ipcMain.handle(IPC_CHANNELS.homeGetPreferences, () =>
     homeStore?.getHomePreferences() ?? { searchTemplate: DEFAULT_HOME_SEARCH_TEMPLATE }
   )
@@ -213,8 +329,47 @@ function createWindow(): void {
     }
   })
 
+  automationPlayback = createAutomationPlaybackManager({
+    connect: async (request) => {
+      if (!automationCdpBridge) {
+        return {
+          ok: false,
+          sessionId: null,
+          state: 'error',
+          reason: 'attach-failed',
+          tabId: null
+        }
+      }
+
+      return automationCdpBridge.connect(request)
+    },
+    disconnect: async (request) => {
+      if (!automationCdpBridge) {
+        return {
+          ok: false,
+          state: 'disconnected',
+          reason: 'invalid-session'
+        }
+      }
+
+      return automationCdpBridge.disconnect(request)
+    },
+    withConnectedPage: async (sessionId, callback) => {
+      if (!automationCdpBridge) {
+        return {
+          ok: false,
+          reason: 'missing-target',
+          message: 'Automation bridge is not available.'
+        }
+      }
+
+      return automationCdpBridge.withConnectedPage(sessionId, callback)
+    }
+  })
+
   browserRuntime.onTabClosed((tabId) => {
     actionRecorder?.stopForTargetLoss(tabId)
+    automationPlayback?.stopForTargetLoss(tabId)
   })
 
   downloadManager = new DownloadManager(
@@ -257,6 +412,7 @@ app.on('window-all-closed', () => {
 })
 
 app.on('before-quit', () => {
+  void automationPlayback?.shutdown()
   void automationCdpBridge?.shutdown()
   actionRecorder?.shutdown()
   quickSearchWindowManager?.destroy()
