@@ -225,6 +225,14 @@ Success criteria:
 ### Phase 13: Live Agent Mode
 Goal: Allow AI-assisted multi-step execution under explicit user control.
 Requirements: AI-04
+Status: Planned (2026-04-16)
+**Plans:** 3 plans
+
+Plans:
+- [ ] 13-01-PLAN.md - Define live-agent contracts, risk policy, and orchestration control APIs
+- [ ] 13-02-PLAN.md - Implement approval enforcement, audit persistence, and run-control semantics
+- [ ] 13-03-PLAN.md - Build sidebar/command live-agent controls and step timeline visibility
+
 Success criteria:
 1. High-impact actions are blocked until explicit user approval is granted.
 2. Agent loop logs planned action, observed result, and next-step rationale per step.
