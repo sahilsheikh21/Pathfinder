@@ -34,7 +34,7 @@
 ### AI and Agentic Features
 
 - [x] **AI-01**: User can configure at least one cloud provider and one local provider for AI features.
-- [ ] **AI-02**: User can ask AI about the current page and receive answers grounded in extracted page content.
+- [x] **AI-02**: User can ask AI about the current page and receive answers grounded in extracted page content.
 - [ ] **AI-03**: User can request AI-generated automation drafts from natural-language prompts.
 - [ ] **AI-04**: System requires explicit user approval before AI executes high-impact or irreversible actions.
 - [ ] **AI-05**: User can run AI commands from the command palette with visible progress and cancellation.
@@ -91,7 +91,7 @@
 | AUTO-04 | Phase 9 | Pending |
 | AUTO-05 | Phase 9 | Pending |
 | AI-01 | Phase 10 | Complete |
-| AI-02 | Phase 11 | Pending |
+| AI-02 | Phase 11 | Complete |
 | AI-03 | Phase 12 | Pending |
 | AI-04 | Phase 13 | Pending |
 | AI-05 | Phase 12 | Pending |
