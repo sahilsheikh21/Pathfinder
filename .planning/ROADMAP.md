@@ -28,7 +28,7 @@
 | 8 | Automation playback | 3/3 | Complete    | 2026-04-15 |
 | 9 | Sidebar and history | 4/4 | Complete | 2026-04-15 |
 | 10 | LLM adapter layer | 3/3 | Complete    | 2026-04-15 |
-| 11 | Page analysis | 1/3 | In Progress|  |
+| 11 | Page analysis | 2/3 | In Progress|  |
 | 12 | AI automation generation | Prompt-to-workflow with explicit preview and command integration | AI-03, AI-05 | 3 |
 | 13 | Live agent mode | Controlled multi-step AI execution with approvals | AI-04 | 3 |
 | 14 | Settings system | Full general/privacy configuration surface | SET-01, SET-03 | 3 |
@@ -202,11 +202,11 @@ Success criteria:
 Goal: Deliver AI Q&A on current page context.
 Requirements: AI-02
 Status: Planned (2026-04-16)
-**Plans:** 1/3 plans executed
+**Plans:** 2/3 plans executed
 
 Plans:
 - [x] 11-01-PLAN.md - Define page-analysis contracts and extraction/grounding service core
-- [ ] 11-02-PLAN.md - Wire main/preload page-analysis handlers and lifecycle invalidation
+- [x] 11-02-PLAN.md - Wire main/preload page-analysis handlers and lifecycle invalidation
 - [ ] 11-03-PLAN.md - Implement sidebar and command UX with grounded citations and controls
 
 Success criteria:
