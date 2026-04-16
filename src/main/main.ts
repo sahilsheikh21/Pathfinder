@@ -25,6 +25,7 @@ import {
 } from './llm/providerConfigStore'
 import { createSecretStore, type SecretStore } from './llm/secretStore'
 import { createLLMAdapterService, type LLMAdapterService } from './llm/llmAdapterService'
+import { createPageAnalysisService, type PageAnalysisService } from './llm/pageAnalysisService'
 import { loadSessionSnapshot, saveSessionSnapshot } from './sessionStore'
 import { IPC_CHANNELS, type AppPlatformResponse, type AppVersionResponse } from '../shared/ipc'
 import {
@@ -34,6 +35,8 @@ import {
   type AutomationSidebarPreferences,
   type AutomationSidebarPreferencesUpdateRequest,
   type LLMProviderId,
+  type PageAnalysisFailure,
+  type PageAnalysisResult,
   type RecentAutomationPreview
 } from '../shared/browser'
 
@@ -50,6 +53,7 @@ let automationUserDataPath: string | null = null
 let llmProviderConfigStore: ProviderConfigStore | null = null
 let llmSecretStore: SecretStore | null = null
 let llmAdapterService: LLMAdapterService | null = null
+let pageAnalysisService: PageAnalysisService | null = null
 
 const cdpPort = Number(process.env.PATHFINDER_CDP_PORT ?? '9222')
 const cdpEndpoint = `http://127.0.0.1:${cdpPort}`
@@ -193,6 +197,31 @@ const toUnavailableLlmError = (provider: LLMProviderId, message: string) => ({
   reason: 'provider-error' as const,
   retryable: false,
   message
+})
+
+const toUnavailablePageAnalysisFailure = (
+  message: string,
+  userAction: PageAnalysisFailure['userAction'] = 'retry'
+): PageAnalysisFailure => ({
+  reason: 'provider-error',
+  message,
+  retryable: false,
+  userAction
+})
+
+const toUnavailablePageAnalysisResult = (
+  mode: PageAnalysisResult['mode'],
+  message: string
+): PageAnalysisResult => ({
+  ok: false,
+  mode,
+  answer: '',
+  sections: [],
+  confidence: 'uncertain',
+  snapshot: null,
+  citations: [],
+  usedNonPageContext: false,
+  error: toUnavailablePageAnalysisFailure(message)
 })
 
 const toStepFailure = (
@@ -727,6 +756,108 @@ function registerIpcHandlers(): void {
       }
     }
   })
+
+  ipcMain.handle(IPC_CHANNELS.pageAnalysisSummarize, async (_event, request) => {
+    if (!pageAnalysisService) {
+      return toUnavailablePageAnalysisResult('summarize', 'Page analysis service is not available.')
+    }
+
+    try {
+      return await pageAnalysisService.summarize(request)
+    } catch (error) {
+      return {
+        ...toUnavailablePageAnalysisResult(
+          'summarize',
+          toRedactedMainErrorMessage(error, 'Page summary failed.')
+        ),
+        error: toUnavailablePageAnalysisFailure(
+          toRedactedMainErrorMessage(error, 'Page summary failed.'),
+          'retry'
+        )
+      }
+    }
+  })
+
+  ipcMain.handle(IPC_CHANNELS.pageAnalysisAsk, async (_event, request) => {
+    if (!pageAnalysisService) {
+      return toUnavailablePageAnalysisResult('ask', 'Page analysis service is not available.')
+    }
+
+    try {
+      return await pageAnalysisService.ask(request)
+    } catch (error) {
+      return {
+        ...toUnavailablePageAnalysisResult(
+          'ask',
+          toRedactedMainErrorMessage(error, 'Page question answering failed.')
+        ),
+        error: toUnavailablePageAnalysisFailure(
+          toRedactedMainErrorMessage(error, 'Page question answering failed.'),
+          'retry'
+        )
+      }
+    }
+  })
+
+  ipcMain.handle(IPC_CHANNELS.pageAnalysisCancel, (_event, request) => {
+    if (!pageAnalysisService) {
+      return {
+        ok: false,
+        operationId: request?.operationId ?? null,
+        cancelled: false
+      }
+    }
+
+    return pageAnalysisService.cancel(request)
+  })
+
+  ipcMain.handle(IPC_CHANNELS.pageAnalysisRefreshContext, async (_event, request) => {
+    if (!pageAnalysisService) {
+      return {
+        ok: false,
+        snapshot: null,
+        error: toUnavailablePageAnalysisFailure('Page analysis service is not available.', 'retry')
+      }
+    }
+
+    try {
+      return await pageAnalysisService.refreshContext(request)
+    } catch (error) {
+      return {
+        ok: false,
+        snapshot: null,
+        error: toUnavailablePageAnalysisFailure(
+          toRedactedMainErrorMessage(error, 'Page context refresh failed.'),
+          'retry'
+        )
+      }
+    }
+  })
+
+  ipcMain.handle(IPC_CHANNELS.pageAnalysisClearContext, (_event, request) => {
+    if (!pageAnalysisService) {
+      return {
+        ok: true,
+        tabId: request?.tabId ?? null
+      }
+    }
+
+    return pageAnalysisService.clearContext(request)
+  })
+
+  ipcMain.handle(IPC_CHANNELS.pageAnalysisGetStatus, (_event, request) => {
+    if (!pageAnalysisService) {
+      return {
+        state: 'idle' as const,
+        operationId: null,
+        tabId: request?.tabId ?? null,
+        hasContext: false,
+        snapshot: null
+      }
+    }
+
+    return pageAnalysisService.getStatus(request)
+  })
 }
 
 function createWindow(): void {
@@ -773,6 +904,13 @@ function createWindow(): void {
       saveSessionSnapshot(userDataPath, browserRuntime.exportSnapshot())
     }
   })
+
+  if (llmAdapterService) {
+    pageAnalysisService = createPageAnalysisService({
+      resolveTarget: (tabId) => browserRuntime?.resolveAutomationTarget(tabId) ?? null,
+      llmAdapterService
+    })
+  }
 
   automationCdpBridge = createAutomationCdpBridge({
     cdpEndpoint,
