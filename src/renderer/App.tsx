@@ -11,7 +11,16 @@ import {
   type AutomationPlaybackVariablePrompt,
   type AutomationSidebarPreferences,
   type AutomationSidebarSection,
+  type BrowserClearDataBucket,
+  type BrowserSettingsSnapshot,
+  type BrowserSettingsValidationError,
+  type ClearDataBucketResult,
+  type BrowserGeneralSettings,
+  type BrowserPrivacySettings,
   type LLMAdapterConfigState,
+  type LiveAgentRunState,
+  type LiveAgentStatusResult,
+  type LiveAgentStepAuditEvent,
   type PageAnalysisFailure,
   type PageAnalysisMode,
   type PageAnalysisResult,
@@ -36,6 +45,7 @@ import AutomationPlaybackPrompt from './components/AutomationPlaybackPrompt'
 import CommandPalette from './components/CommandPalette'
 import DownloadShelf from './components/DownloadShelf'
 import HomeStarterPage from './components/HomeStarterPage'
+import SettingsPanel from './components/SettingsPanel'
 import { createBrowserCommands, type CommandPaletteCommand } from './lib/commandPalette'
 import NavigationBar from './components/NavigationBar'
 import './styles/global.css'
@@ -76,6 +86,27 @@ const getPageAnalysisUserActionLabel = (action: PageAnalysisFailure['userAction'
   return 'Continue'
 }
 
+const formatLiveAgentState = (state: LiveAgentRunState): string => {
+  if (state === 'waiting-approval') {
+    return 'Waiting Approval'
+  }
+
+  return state
+    .split('-')
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(' ')
+}
+
+const LIVE_AGENT_FIELD_TRUNCATION_LIMIT = 140
+
+const truncateLiveAgentField = (value: string): string => {
+  if (value.length <= LIVE_AGENT_FIELD_TRUNCATION_LIMIT) {
+    return value
+  }
+
+  return `${value.slice(0, LIVE_AGENT_FIELD_TRUNCATION_LIMIT)}...`
+}
+
 type PendingPlaybackRequest =
   | { kind: 'path'; workflowPath: string; label: string }
   | { kind: 'library'; libraryId: string; label: string }
@@ -94,6 +125,17 @@ const DEFAULT_PAGE_ANALYSIS_STATUS: PageAnalysisStatusResult = {
   tabId: null,
   hasContext: false,
   snapshot: null
+}
+
+const DEFAULT_LIVE_AGENT_STATUS: LiveAgentStatusResult = {
+  state: 'idle',
+  runId: null,
+  tabId: null,
+  approvalBatch: null,
+  nextStep: null,
+  completedSteps: 0,
+  totalSteps: 0,
+  updatedAt: null
 }
 
 const DEFAULT_PAGE_ANALYSIS_VERBOSITY: PageAnalysisVerbosity = 'concise'
@@ -118,6 +160,10 @@ const DEFAULT_AI_AUTOMATION_CONSTRAINTS: AIAutomationConstraintDraft = {
   variables: '',
   notes: ''
 }
+
+const EMPTY_SETTINGS_VALIDATION_ERRORS: Partial<Record<string, string>> = {}
+
+const DEFAULT_SETTINGS_STATUS_MESSAGE = 'Open Settings to manage general and privacy behavior.'
 
 const toDraftInputValueString = (value: RecorderInputValue): string => {
   if (typeof value === 'string') {
@@ -297,6 +343,16 @@ function App() {
   const [aiBusyState, setAiBusyState] = useState<'idle' | 'saving' | 'validating'>('idle')
   const [isOverlayMode, setIsOverlayMode] = useState(() => window.innerWidth < 980)
   const [isOverlayOpen, setIsOverlayOpen] = useState(false)
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false)
+  const [settingsSnapshot, setSettingsSnapshot] = useState<BrowserSettingsSnapshot | null>(null)
+  const [settingsBusyState, setSettingsBusyState] = useState<
+    'idle' | 'loading' | 'saving-general' | 'saving-privacy' | 'clearing-data'
+  >('idle')
+  const [settingsStatusMessage, setSettingsStatusMessage] = useState(DEFAULT_SETTINGS_STATUS_MESSAGE)
+  const [settingsStatusTone, setSettingsStatusTone] = useState<'neutral' | 'success' | 'error'>('neutral')
+  const [settingsValidationErrors, setSettingsValidationErrors] =
+    useState<Partial<Record<string, string>>>(EMPTY_SETTINGS_VALIDATION_ERRORS)
+  const [settingsClearDataResults, setSettingsClearDataResults] = useState<ClearDataBucketResult[]>([])
   const [libraryItems, setLibraryItems] = useState<AutomationLibraryItem[]>([])
   const [libraryQuery, setLibraryQuery] = useState('')
   const [libraryTagFilter, setLibraryTagFilter] = useState<string[]>([])
@@ -346,14 +402,31 @@ function App() {
   const [aiAutomationValidationErrors, setAiAutomationValidationErrors] = useState<string[]>([])
   const [aiAutomationBusyState, setAiAutomationBusyState] =
     useState<'idle' | 'generating' | 'saving' | 'save-and-run' | 'cancelling'>('idle')
+  const [liveAgentPrompt, setLiveAgentPrompt] = useState('')
+  const [liveAgentBatchSize, setLiveAgentBatchSize] = useState(3)
+  const [liveAgentStatus, setLiveAgentStatus] = useState<LiveAgentStatusResult>(
+    DEFAULT_LIVE_AGENT_STATUS
+  )
+  const [liveAgentAuditTrail, setLiveAgentAuditTrail] = useState<LiveAgentStepAuditEvent[]>([])
+  const [liveAgentStatusMessage, setLiveAgentStatusMessage] = useState(
+    'Live Agent is idle. Provide a prompt to start guided execution.'
+  )
+  const [liveAgentStatusTone, setLiveAgentStatusTone] =
+    useState<'neutral' | 'success' | 'error'>('neutral')
+  const [liveAgentBusyState, setLiveAgentBusyState] =
+    useState<'idle' | 'starting' | 'approving' | 'pausing' | 'resuming' | 'cancelling'>('idle')
+  const [liveAgentExpandedAuditIds, setLiveAgentExpandedAuditIds] = useState<string[]>([])
   const pageAnalysisQuestionInputRef = useRef<HTMLInputElement | null>(null)
   const aiAutomationPromptInputRef = useRef<HTMLInputElement | null>(null)
+  const liveAgentPromptInputRef = useRef<HTMLInputElement | null>(null)
+  const settingsReturnFocusRef = useRef<HTMLElement | null>(null)
 
   const activeTab = useMemo(() => {
     return tabs.find((tab) => tab.id === activeTabId) ?? null
   }, [activeTabId, tabs])
 
-  const isHomeTab = activeTab?.url === HOME_STARTER_URL
+  const isHomeTab = activeTab?.url === HOME_STARTER_URL || activeTab?.url === 'about:blank'
+  const shouldRenderHomeStarter = isHomeTab || tabs.length === 0
 
   const activePageAnalysisEntry = useMemo(() => {
     if (!activeTabId) {
@@ -380,16 +453,56 @@ function App() {
     return activePageAnalysisSnapshot.stale || staleByAge
   }, [activePageAnalysisSnapshot])
 
+  const liveAgentApprovalBatch = liveAgentStatus.approvalBatch
+
+  const liveAgentCanStart =
+    liveAgentBusyState === 'idle' &&
+    (liveAgentStatus.state === 'idle' ||
+      liveAgentStatus.state === 'completed' ||
+      liveAgentStatus.state === 'failed' ||
+      liveAgentStatus.state === 'cancelled')
+
+  const liveAgentCanApprove =
+    liveAgentBusyState === 'idle' &&
+    liveAgentStatus.state === 'waiting-approval' &&
+    Boolean(liveAgentApprovalBatch)
+
+  const liveAgentCanPause =
+    liveAgentBusyState === 'idle' &&
+    (liveAgentStatus.state === 'running' || liveAgentStatus.state === 'planning')
+
+  const liveAgentCanResume =
+    liveAgentBusyState === 'idle' && liveAgentStatus.state === 'paused'
+
+  const liveAgentCanCancel =
+    liveAgentBusyState === 'idle' &&
+    ['planning', 'running', 'waiting-approval', 'paused'].includes(liveAgentStatus.state)
+
   const sidebarBadges = useMemo(() => {
     const runningCount = historyEntries.filter((entry) => entry.status === 'running').length
     const failedCount = historyEntries.filter((entry) => entry.status === 'failed').length
+    const liveAgentNeedsAttention =
+      liveAgentStatus.state === 'waiting-approval' ||
+      liveAgentStatusTone === 'error'
 
     return {
       library: libraryItems.length,
       history: runningCount + failedCount,
-      'ai-chat': aiStatusTone === 'error' || pageAnalysisStatusTone === 'error' ? 1 : 0
+      'ai-chat':
+        aiStatusTone === 'error' ||
+        pageAnalysisStatusTone === 'error' ||
+        liveAgentNeedsAttention
+          ? 1
+          : 0
     } satisfies Partial<Record<AutomationSidebarSection, number>>
-  }, [aiStatusTone, historyEntries, libraryItems.length, pageAnalysisStatusTone])
+  }, [
+    aiStatusTone,
+    historyEntries,
+    libraryItems.length,
+    liveAgentStatus.state,
+    liveAgentStatusTone,
+    pageAnalysisStatusTone
+  ])
 
   const persistSidebarPreferences = useCallback(
     (patch: Partial<AutomationSidebarPreferences>): void => {
@@ -540,6 +653,171 @@ function App() {
     })
   }, [isOverlayMode, persistSidebarPreferences])
 
+  const applySettingsValidationError = useCallback(
+    (error: BrowserSettingsValidationError | undefined): void => {
+      if (!error) {
+        setSettingsValidationErrors(EMPTY_SETTINGS_VALIDATION_ERRORS)
+        return
+      }
+
+      setSettingsValidationErrors({
+        [error.field]: error.message
+      })
+    },
+    []
+  )
+
+  const openSettingsPanel = useCallback(async (): Promise<void> => {
+    settingsReturnFocusRef.current =
+      document.activeElement instanceof HTMLElement ? document.activeElement : null
+
+    setIsSettingsOpen(true)
+    setSettingsBusyState('loading')
+    setSettingsStatusTone('neutral')
+    setSettingsStatusMessage('Loading settings snapshot...')
+    setSettingsValidationErrors(EMPTY_SETTINGS_VALIDATION_ERRORS)
+    setSettingsClearDataResults([])
+
+    try {
+      const snapshot = await window.pathfinder.settingsGetSnapshot()
+      setSettingsSnapshot(snapshot)
+
+      if (snapshot.repairNotice) {
+        setSettingsStatusTone('neutral')
+        setSettingsStatusMessage(
+          `Settings were auto-repaired (${snapshot.repairNotice.reason}). Review and re-save if needed.`
+        )
+      } else {
+        setSettingsStatusTone('success')
+        setSettingsStatusMessage('Settings loaded. Update values and save section changes.')
+      }
+    } catch (error) {
+      setSettingsStatusTone('error')
+      setSettingsStatusMessage(
+        error instanceof Error ? error.message : 'Unable to load settings snapshot.'
+      )
+    } finally {
+      setSettingsBusyState('idle')
+    }
+  }, [])
+
+  const closeSettingsPanel = useCallback((): void => {
+    setIsSettingsOpen(false)
+    setSettingsBusyState('idle')
+    setSettingsValidationErrors(EMPTY_SETTINGS_VALIDATION_ERRORS)
+
+    window.setTimeout(() => {
+      settingsReturnFocusRef.current?.focus()
+    }, 0)
+  }, [])
+
+  const saveGeneralSettings = useCallback(
+    async (general: BrowserGeneralSettings): Promise<void> => {
+      setSettingsBusyState('saving-general')
+      setSettingsStatusTone('neutral')
+      setSettingsStatusMessage('Saving general settings...')
+      setSettingsClearDataResults([])
+
+      try {
+        const result = await window.pathfinder.settingsSaveGeneral({ general })
+        setSettingsSnapshot(result.snapshot)
+        applySettingsValidationError(result.validationError)
+
+        if (result.ok) {
+          setSettingsStatusTone('success')
+          setSettingsStatusMessage('General settings saved successfully.')
+          return
+        }
+
+        setSettingsStatusTone('error')
+        setSettingsStatusMessage(result.validationError?.message ?? 'General settings could not be saved.')
+      } catch (error) {
+        setSettingsStatusTone('error')
+        setSettingsStatusMessage(
+          error instanceof Error ? error.message : 'General settings could not be saved.'
+        )
+      } finally {
+        setSettingsBusyState('idle')
+      }
+    },
+    [applySettingsValidationError]
+  )
+
+  const savePrivacySettings = useCallback(
+    async (privacy: BrowserPrivacySettings): Promise<void> => {
+      setSettingsBusyState('saving-privacy')
+      setSettingsStatusTone('neutral')
+      setSettingsStatusMessage('Saving privacy settings...')
+      setSettingsClearDataResults([])
+
+      try {
+        const result = await window.pathfinder.settingsSavePrivacy({ privacy })
+        setSettingsSnapshot(result.snapshot)
+        applySettingsValidationError(result.validationError)
+
+        if (result.ok) {
+          setSettingsStatusTone('success')
+          setSettingsStatusMessage('Privacy settings saved successfully.')
+          return
+        }
+
+        setSettingsStatusTone('error')
+        setSettingsStatusMessage(result.validationError?.message ?? 'Privacy settings could not be saved.')
+      } catch (error) {
+        setSettingsStatusTone('error')
+        setSettingsStatusMessage(
+          error instanceof Error ? error.message : 'Privacy settings could not be saved.'
+        )
+      } finally {
+        setSettingsBusyState('idle')
+      }
+    },
+    [applySettingsValidationError]
+  )
+
+  const clearSettingsDataBuckets = useCallback(
+    async (buckets: BrowserClearDataBucket[]): Promise<void> => {
+      setSettingsBusyState('clearing-data')
+      setSettingsStatusTone('neutral')
+      setSettingsStatusMessage('Clearing selected data buckets...')
+
+      try {
+        const result = await window.pathfinder.settingsClearData({ buckets })
+        setSettingsSnapshot(result.snapshot)
+        setSettingsClearDataResults(result.bucketResults)
+        applySettingsValidationError(result.validationError)
+
+        if (result.ok) {
+          setSettingsStatusTone('success')
+          setSettingsStatusMessage('Selected data buckets were cleared.')
+          return
+        }
+
+        const failedBuckets = result.bucketResults.filter((bucketResult) => !bucketResult.ok)
+        if (failedBuckets.length > 0) {
+          setSettingsStatusTone('error')
+          setSettingsStatusMessage(
+            `Some buckets failed: ${failedBuckets.map((bucketResult) => bucketResult.bucket).join(', ')}`
+          )
+          return
+        }
+
+        setSettingsStatusTone('error')
+        setSettingsStatusMessage(
+          result.validationError?.message ?? 'Unable to clear selected data buckets.'
+        )
+      } catch (error) {
+        setSettingsStatusTone('error')
+        setSettingsStatusMessage(
+          error instanceof Error ? error.message : 'Unable to clear selected data buckets.'
+        )
+      } finally {
+        setSettingsBusyState('idle')
+      }
+    },
+    [applySettingsValidationError]
+  )
+
   const buildAutomationGenerateRequestConstraints = useCallback(() => {
     const variableHints = aiAutomationConstraints.variables
       .split(/[\n,]/)
@@ -584,6 +862,235 @@ function App() {
     } else if (status.state === 'ready' && status.hasDraft) {
       setAiAutomationStatusMessage('Draft ready. Review and approve before saving or running.')
     }
+  }, [])
+
+  const refreshLiveAgentAuditTrail = useCallback(async (runId: string | null): Promise<void> => {
+    if (!runId) {
+      setLiveAgentAuditTrail([])
+      return
+    }
+
+    const result = await window.pathfinder.liveAgentGetAuditTrail({ runId })
+    setLiveAgentAuditTrail(result.events)
+    setLiveAgentExpandedAuditIds((current) =>
+      current.filter((eventId) => result.events.some((event) => event.id === eventId))
+    )
+  }, [])
+
+  const refreshLiveAgentStatus = useCallback(async (): Promise<void> => {
+    try {
+      const status = await window.pathfinder.liveAgentGetStatus(
+        liveAgentStatus.runId ? { runId: liveAgentStatus.runId } : undefined
+      )
+      setLiveAgentStatus(status)
+
+      if (status.error) {
+        setLiveAgentStatusTone('error')
+        setLiveAgentStatusMessage(status.error.message)
+      } else if (status.state === 'waiting-approval' && status.approvalBatch) {
+        setLiveAgentStatusTone('neutral')
+        setLiveAgentStatusMessage(
+          `Approval required for ${status.approvalBatch.size} planned step${status.approvalBatch.size > 1 ? 's' : ''}.`
+        )
+      } else if (status.state === 'running') {
+        setLiveAgentStatusTone('success')
+        setLiveAgentStatusMessage('Live Agent is executing approved steps.')
+      } else if (status.state === 'paused') {
+        setLiveAgentStatusTone('neutral')
+        setLiveAgentStatusMessage('Live Agent paused at a safe boundary. Resume when ready.')
+      } else if (status.state === 'completed') {
+        setLiveAgentStatusTone('success')
+        setLiveAgentStatusMessage('Live Agent run completed successfully.')
+      } else if (status.state === 'cancelled') {
+        setLiveAgentStatusTone('neutral')
+        setLiveAgentStatusMessage('Live Agent run was cancelled.')
+      }
+
+      await refreshLiveAgentAuditTrail(status.runId)
+    } catch (error) {
+      setLiveAgentStatusTone('error')
+      setLiveAgentStatusMessage(
+        error instanceof Error ? error.message : 'Unable to refresh Live Agent status.'
+      )
+    }
+  }, [liveAgentStatus.runId, refreshLiveAgentAuditTrail])
+
+  const refreshHistorySnapshot = useCallback(async (): Promise<void> => {
+    const result = await window.pathfinder.automationHistoryList({
+      status: historyStatusFilter ?? 'all',
+      ...(historyQuery.trim() ? { query: historyQuery.trim() } : {})
+    })
+
+    setHistoryEntries(result.entries)
+  }, [historyQuery, historyStatusFilter])
+
+  const startLiveAgentRun = useCallback(
+    async (promptOverride?: string): Promise<void> => {
+      await focusAiSection()
+
+      const prompt = (promptOverride ?? liveAgentPrompt).trim()
+      if (!prompt) {
+        setLiveAgentStatusTone('error')
+        setLiveAgentStatusMessage('Provide a Live Agent prompt before starting a run.')
+        liveAgentPromptInputRef.current?.focus()
+        throw new Error('Provide a Live Agent prompt before starting.')
+      }
+
+      if (promptOverride?.trim()) {
+        setLiveAgentPrompt(promptOverride.trim())
+      }
+
+      setLiveAgentBusyState('starting')
+      setLiveAgentStatusTone('neutral')
+      setLiveAgentStatusMessage('Starting Live Agent run...')
+
+      try {
+        const result = await window.pathfinder.liveAgentStart({
+          prompt,
+          batchSize: liveAgentBatchSize,
+          ...(activeTabId ? { tabId: activeTabId } : {})
+        })
+
+        if (!result.ok) {
+          const message = result.error?.message ?? 'Unable to start Live Agent run.'
+          setLiveAgentStatusTone('error')
+          setLiveAgentStatusMessage(message)
+          throw new Error(message)
+        }
+
+        setLiveAgentStatusTone('success')
+        setLiveAgentStatusMessage('Live Agent run started.')
+        await refreshLiveAgentStatus()
+        await refreshHistorySnapshot()
+      } finally {
+        setLiveAgentBusyState('idle')
+      }
+    },
+    [
+      activeTabId,
+      focusAiSection,
+      liveAgentBatchSize,
+      liveAgentPrompt,
+      refreshHistorySnapshot,
+      refreshLiveAgentStatus
+    ]
+  )
+
+  const approveLiveAgentBatch = useCallback(
+    async (decision: 'approve' | 'reject'): Promise<void> => {
+      const runId = liveAgentStatus.runId
+      const approvalBatch = liveAgentApprovalBatch
+
+      if (!runId || !approvalBatch) {
+        throw new Error('No approval batch is available.')
+      }
+
+      setLiveAgentBusyState('approving')
+      setLiveAgentStatusTone('neutral')
+      setLiveAgentStatusMessage(
+        decision === 'approve' ? 'Approving batch...' : 'Rejecting batch...'
+      )
+
+      try {
+        const result = await window.pathfinder.liveAgentApproveBatch({
+          runId,
+          batchId: approvalBatch.batchId,
+          decision
+        })
+
+        if (!result.ok) {
+          const message = result.error?.message ?? 'Unable to submit approval decision.'
+          setLiveAgentStatusTone('error')
+          setLiveAgentStatusMessage(message)
+          throw new Error(message)
+        }
+
+        setLiveAgentStatusTone(decision === 'approve' ? 'success' : 'neutral')
+        setLiveAgentStatusMessage(
+          decision === 'approve'
+            ? 'Batch approved. Live Agent resumed execution.'
+            : 'Batch rejected. Live Agent run stopped.'
+        )
+      } finally {
+        setLiveAgentBusyState('idle')
+        await refreshLiveAgentStatus()
+        await refreshHistorySnapshot()
+      }
+    },
+    [
+      liveAgentApprovalBatch,
+      liveAgentStatus.runId,
+      refreshHistorySnapshot,
+      refreshLiveAgentStatus
+    ]
+  )
+
+  const pauseLiveAgentRun = useCallback(async (): Promise<void> => {
+    setLiveAgentBusyState('pausing')
+    setLiveAgentStatusTone('neutral')
+    setLiveAgentStatusMessage('Pausing Live Agent at a safe boundary...')
+
+    try {
+      const result = await window.pathfinder.liveAgentPause(
+        liveAgentStatus.runId ? { runId: liveAgentStatus.runId } : undefined
+      )
+
+      if (!result.ok) {
+        throw new Error(result.error?.message ?? 'Unable to pause Live Agent run.')
+      }
+    } finally {
+      setLiveAgentBusyState('idle')
+      await refreshLiveAgentStatus()
+    }
+  }, [liveAgentStatus.runId, refreshLiveAgentStatus])
+
+  const resumeLiveAgentRun = useCallback(async (): Promise<void> => {
+    setLiveAgentBusyState('resuming')
+    setLiveAgentStatusTone('neutral')
+    setLiveAgentStatusMessage('Resuming Live Agent run...')
+
+    try {
+      const result = await window.pathfinder.liveAgentResume({
+        ...(liveAgentStatus.runId ? { runId: liveAgentStatus.runId } : {}),
+        ...(activeTabId ? { tabId: activeTabId } : {})
+      })
+
+      if (!result.ok) {
+        throw new Error(result.error?.message ?? 'Unable to resume Live Agent run.')
+      }
+    } finally {
+      setLiveAgentBusyState('idle')
+      await refreshLiveAgentStatus()
+      await refreshHistorySnapshot()
+    }
+  }, [activeTabId, liveAgentStatus.runId, refreshHistorySnapshot, refreshLiveAgentStatus])
+
+  const cancelLiveAgentRun = useCallback(async (): Promise<void> => {
+    setLiveAgentBusyState('cancelling')
+    setLiveAgentStatusTone('neutral')
+    setLiveAgentStatusMessage('Cancelling Live Agent run...')
+
+    try {
+      const result = await window.pathfinder.liveAgentCancel(
+        liveAgentStatus.runId ? { runId: liveAgentStatus.runId } : undefined
+      )
+
+      if (!result.ok) {
+        throw new Error(result.error?.message ?? 'Unable to cancel Live Agent run.')
+      }
+    } finally {
+      setLiveAgentBusyState('idle')
+      await refreshLiveAgentStatus()
+      await refreshHistorySnapshot()
+    }
+  }, [liveAgentStatus.runId, refreshHistorySnapshot, refreshLiveAgentStatus])
+
+  const toggleLiveAgentAuditExpansion = useCallback((eventId: string): void => {
+    setLiveAgentExpandedAuditIds((current) =>
+      current.includes(eventId)
+        ? current.filter((id) => id !== eventId)
+        : [...current, eventId]
+    )
   }, [])
 
   const requestAutomationGeneration = useCallback(
@@ -1130,6 +1637,16 @@ function App() {
         return
       }
 
+      if (initialTabs.length === 0) {
+        const seededTabs = await window.pathfinder.createTab(HOME_STARTER_URL)
+        if (!isMounted) {
+          return
+        }
+
+        syncTabs(seededTabs)
+        return
+      }
+
       syncTabs(initialTabs)
     }
 
@@ -1161,8 +1678,23 @@ function App() {
 
     loadInitialTabs().catch(() => {
       if (isMounted) {
-        setTabs([])
-        setActiveTabId(null)
+        window.pathfinder
+          .createTab(HOME_STARTER_URL)
+          .then((seededTabs) => {
+            if (!isMounted) {
+              return
+            }
+
+            syncTabs(seededTabs)
+          })
+          .catch(() => {
+            if (!isMounted) {
+              return
+            }
+
+            setTabs([])
+            setActiveTabId(null)
+          })
       }
     })
 
@@ -1630,6 +2162,10 @@ function App() {
     await openSidebarSectionFromCommand('ai-chat')
   }, [openSidebarSectionFromCommand])
 
+  const openSettingsFromCommand = useCallback(async (): Promise<void> => {
+    await openSettingsPanel()
+  }, [openSettingsPanel])
+
   const summarizeActivePageFromCommand = useCallback(async (): Promise<void> => {
     await openSidebarSectionFromCommand('ai-chat')
     await summarizeActivePage()
@@ -1697,6 +2233,29 @@ function App() {
     await cancelAutomationGeneration()
   }, [cancelAutomationGeneration, openSidebarSectionFromCommand])
 
+  const startLiveAgentFromCommand = useCallback(
+    async (input: string): Promise<void> => {
+      await openSidebarSectionFromCommand('ai-chat')
+      await startLiveAgentRun(input)
+    },
+    [openSidebarSectionFromCommand, startLiveAgentRun]
+  )
+
+  const pauseLiveAgentFromCommand = useCallback(async (): Promise<void> => {
+    await openSidebarSectionFromCommand('ai-chat')
+    await pauseLiveAgentRun()
+  }, [openSidebarSectionFromCommand, pauseLiveAgentRun])
+
+  const resumeLiveAgentFromCommand = useCallback(async (): Promise<void> => {
+    await openSidebarSectionFromCommand('ai-chat')
+    await resumeLiveAgentRun()
+  }, [openSidebarSectionFromCommand, resumeLiveAgentRun])
+
+  const cancelLiveAgentFromCommand = useCallback(async (): Promise<void> => {
+    await openSidebarSectionFromCommand('ai-chat')
+    await cancelLiveAgentRun()
+  }, [cancelLiveAgentRun, openSidebarSectionFromCommand])
+
   const runRecentAutomation = useCallback(
     async (preview: { id: string; canRun?: boolean; name: string }): Promise<void> => {
       if (!preview.canRun) {
@@ -1746,6 +2305,7 @@ function App() {
     toggleSidebar: toggleSidebarFromCommand,
     openSidebarLibrary: async () => openSidebarSectionFromCommand('library'),
     openSidebarHistory: async () => openSidebarSectionFromCommand('history'),
+    openSettings: openSettingsFromCommand,
     openAiConfig: openAiConfigFromCommand,
     summarizeActivePage: summarizeActivePageFromCommand,
     askActivePage: askActivePageFromCommand,
@@ -1754,6 +2314,10 @@ function App() {
     validateAiConfig: validateAiConfigFromCommand,
     generateAutomationFromAi: generateAutomationFromCommand,
     cancelAutomationGeneration: cancelAutomationGenerationFromCommand,
+    startLiveAgent: startLiveAgentFromCommand,
+    pauseLiveAgent: pauseLiveAgentFromCommand,
+    resumeLiveAgent: resumeLiveAgentFromCommand,
+    cancelLiveAgent: cancelLiveAgentFromCommand,
     activeTabId
   })
 
@@ -1764,6 +2328,7 @@ function App() {
       void refreshHistory()
       void refreshPageAnalysisStatus()
       void refreshAutomationGenerationStatus()
+      void refreshLiveAgentStatus()
     }, 0)
 
     const interval = window.setInterval(() => {
@@ -1772,6 +2337,7 @@ function App() {
       void refreshHistory()
       void refreshPageAnalysisStatus()
       void refreshAutomationGenerationStatus()
+      void refreshLiveAgentStatus()
     }, 1000)
 
     return () => {
@@ -1781,6 +2347,7 @@ function App() {
   }, [
     refreshAutomationGenerationStatus,
     refreshHistory,
+    refreshLiveAgentStatus,
     refreshPageAnalysisStatus,
     refreshPlaybackStatus,
     refreshRecorderStatus
@@ -1859,6 +2426,15 @@ function App() {
           >
             {playbackIndicatorLabel}
           </span>
+          <button
+            type="button"
+            className="settings-launch-button"
+            onClick={() => {
+              void openSettingsPanel()
+            }}
+          >
+            Settings
+          </button>
           <span
             className={`recorder-indicator ${
               recorderStatus.state === 'recording' ? 'recorder-indicator--active' : 'recorder-indicator--idle'
@@ -2009,6 +2585,233 @@ function App() {
           aiContent={
             <section className="automation-sidebar-ai-panel" aria-label="AI assistant">
               <article className="automation-sidebar-ai-analysis">
+                <section className="automation-sidebar-live-agent" aria-label="Live Agent mode">
+                  <header className="automation-sidebar-live-agent__header">
+                    <h3>Live Agent Mode</h3>
+                    <p>
+                      High-impact actions require explicit approval for each batch before execution.
+                    </p>
+                  </header>
+
+                  <label className="automation-sidebar-live-agent__field">
+                    <span>Run Prompt</span>
+                    <input
+                      ref={liveAgentPromptInputRef}
+                      type="text"
+                      value={liveAgentPrompt}
+                      onChange={(event) => setLiveAgentPrompt(event.target.value)}
+                      placeholder="Review checkout flow and propose safe fixes"
+                    />
+                  </label>
+
+                  <div className="automation-sidebar-live-agent__controls">
+                    <label className="automation-sidebar-live-agent__field automation-sidebar-live-agent__field--batch">
+                      <span>Approval Batch Size</span>
+                      <input
+                        type="number"
+                        min={1}
+                        max={10}
+                        value={liveAgentBatchSize}
+                        onChange={(event) => {
+                          const next = Number(event.target.value)
+                          if (!Number.isFinite(next)) {
+                            return
+                          }
+
+                          setLiveAgentBatchSize(Math.min(10, Math.max(1, Math.floor(next))))
+                        }}
+                      />
+                    </label>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        void startLiveAgentRun()
+                      }}
+                      disabled={!liveAgentCanStart}
+                    >
+                      {liveAgentBusyState === 'starting' ? 'Starting...' : 'Start Live Agent'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        void pauseLiveAgentRun()
+                      }}
+                      disabled={!liveAgentCanPause}
+                    >
+                      {liveAgentBusyState === 'pausing' ? 'Pausing...' : 'Pause'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        void resumeLiveAgentRun()
+                      }}
+                      disabled={!liveAgentCanResume}
+                    >
+                      {liveAgentBusyState === 'resuming' ? 'Resuming...' : 'Resume'}
+                    </button>
+                    <button
+                      type="button"
+                      className="is-danger"
+                      onClick={() => {
+                        void cancelLiveAgentRun()
+                      }}
+                      disabled={!liveAgentCanCancel}
+                    >
+                      {liveAgentBusyState === 'cancelling' ? 'Cancelling...' : 'Cancel'}
+                    </button>
+                  </div>
+
+                  <div
+                    className={`automation-sidebar-live-agent__status automation-sidebar-live-agent__status--${liveAgentStatus.state}`}
+                  >
+                    <span className="automation-sidebar-live-agent__status-label">
+                      State: {formatLiveAgentState(liveAgentStatus.state)}
+                    </span>
+                    <p>{liveAgentStatusMessage}</p>
+                    <p className="automation-sidebar-live-agent__meta">
+                      Run: {liveAgentStatus.runId ?? 'none'}
+                      {' · '}
+                      Steps: {liveAgentStatus.completedSteps}/{liveAgentStatus.totalSteps}
+                    </p>
+                  </div>
+
+                  {liveAgentStatus.error ? (
+                    <div className="automation-sidebar-live-agent__error">
+                      <p>{liveAgentStatus.error.message}</p>
+                    </div>
+                  ) : null}
+
+                  {liveAgentApprovalBatch ? (
+                    <section
+                      className="automation-sidebar-live-agent__approval-card"
+                      aria-label="Live Agent approval batch"
+                    >
+                      <header className="automation-sidebar-live-agent__approval-header">
+                        <h4>Approval Required</h4>
+                        <p>
+                          Batch {liveAgentApprovalBatch.batchId.slice(0, 8)} · {liveAgentApprovalBatch.size} step
+                          {liveAgentApprovalBatch.size > 1 ? 's' : ''}
+                        </p>
+                      </header>
+
+                      <ol className="automation-sidebar-live-agent__approval-steps">
+                        {liveAgentApprovalBatch.steps.map((step) => (
+                          <li key={step.id} className="automation-sidebar-live-agent__approval-step">
+                            <div className="automation-sidebar-live-agent__approval-step-header">
+                              <strong>Step {step.seq}</strong>
+                              <span
+                                className={`automation-sidebar-live-agent__risk-chip automation-sidebar-live-agent__risk-chip--${step.riskTier}`}
+                              >
+                                {step.riskTier}
+                              </span>
+                            </div>
+                            <p>
+                              <strong>Action:</strong> {step.action}
+                              {step.target ? ` -> ${step.target}` : ''}
+                            </p>
+                            <p>
+                              <strong>Expected:</strong> {step.expectedSideEffect}
+                            </p>
+                            <p>
+                              <strong>Rationale:</strong> {step.rationale}
+                            </p>
+                          </li>
+                        ))}
+                      </ol>
+
+                      <div className="automation-sidebar-live-agent__approval-actions">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            void approveLiveAgentBatch('approve')
+                          }}
+                          disabled={!liveAgentCanApprove}
+                        >
+                          {liveAgentBusyState === 'approving' ? 'Submitting...' : 'Approve Batch'}
+                        </button>
+                        <button
+                          type="button"
+                          className="is-danger"
+                          onClick={() => {
+                            void approveLiveAgentBatch('reject')
+                          }}
+                          disabled={!liveAgentCanApprove}
+                        >
+                          Reject Batch
+                        </button>
+                      </div>
+                    </section>
+                  ) : null}
+
+                  <section className="automation-sidebar-live-agent__timeline" aria-label="Live Agent timeline">
+                    <header className="automation-sidebar-live-agent__timeline-header">
+                      <h4>Step Timeline</h4>
+                      <p>{liveAgentAuditTrail.length} events</p>
+                    </header>
+
+                    {liveAgentAuditTrail.length === 0 ? (
+                      <p className="automation-sidebar-live-agent__timeline-empty">
+                        No timeline events yet. Start a run to capture step-level decisions.
+                      </p>
+                    ) : (
+                      <ol className="automation-sidebar-live-agent__timeline-list">
+                        {liveAgentAuditTrail.map((event) => {
+                          const isExpanded = liveAgentExpandedAuditIds.includes(event.id)
+                          const shouldShowToggle =
+                            event.observedResult.length > LIVE_AGENT_FIELD_TRUNCATION_LIMIT ||
+                            event.nextStepRationale.length > LIVE_AGENT_FIELD_TRUNCATION_LIMIT
+
+                          return (
+                            <li key={event.id} className="automation-sidebar-live-agent__timeline-item">
+                              <div className="automation-sidebar-live-agent__timeline-item-header">
+                                <strong>Step {event.stepIndex}</strong>
+                                <span
+                                  className={`automation-sidebar-live-agent__risk-chip automation-sidebar-live-agent__risk-chip--${event.riskTier}`}
+                                >
+                                  {event.riskTier}
+                                </span>
+                                <span
+                                  className={`automation-sidebar-live-agent__decision-chip automation-sidebar-live-agent__decision-chip--${event.approvalDecision}`}
+                                >
+                                  {event.approvalDecision}
+                                </span>
+                              </div>
+                              <p>
+                                <strong>Action:</strong> {event.actionSummary}
+                              </p>
+                              <p>
+                                <strong>Observed:</strong>{' '}
+                                {isExpanded
+                                  ? event.observedResult
+                                  : truncateLiveAgentField(event.observedResult)}
+                              </p>
+                              <p>
+                                <strong>Next Rationale:</strong>{' '}
+                                {isExpanded
+                                  ? event.nextStepRationale
+                                  : truncateLiveAgentField(event.nextStepRationale)}
+                              </p>
+                              <p className="automation-sidebar-live-agent__timeline-meta">
+                                {new Date(event.createdAt).toLocaleTimeString()}
+                              </p>
+                              {shouldShowToggle ? (
+                                <button
+                                  type="button"
+                                  className="automation-sidebar-live-agent__expand-toggle"
+                                  onClick={() => toggleLiveAgentAuditExpansion(event.id)}
+                                >
+                                  {isExpanded ? 'Collapse' : 'Expand'}
+                                </button>
+                              ) : null}
+                            </li>
+                          )
+                        })}
+                      </ol>
+                    )}
+                  </section>
+                </section>
+
                 <section className="automation-sidebar-ai-generation" aria-label="AI automation generation">
                   <header className="automation-sidebar-ai-generation__header">
                     <h3>Automation Generation</h3>
@@ -2738,7 +3541,7 @@ function App() {
         />
 
         <section className="browser-viewport" aria-label="Active tab viewport">
-          {isHomeTab ? (
+          {shouldRenderHomeStarter ? (
             <HomeStarterPage
               activeTabId={activeTabId}
               draftQueryValue={homeDraftQuery}
@@ -2749,6 +3552,22 @@ function App() {
             />
           ) : null}
         </section>
+
+        <SettingsPanel
+          key={settingsSnapshot?.updatedAt ?? 'settings-panel-empty'}
+          isOpen={isSettingsOpen}
+          snapshot={settingsSnapshot}
+          loading={settingsBusyState === 'loading'}
+          busyState={settingsBusyState === 'loading' ? 'idle' : settingsBusyState}
+          statusMessage={settingsStatusMessage}
+          statusTone={settingsStatusTone}
+          validationErrors={settingsValidationErrors}
+          clearDataResults={settingsClearDataResults}
+          onRequestClose={closeSettingsPanel}
+          onSaveGeneral={saveGeneralSettings}
+          onSavePrivacy={savePrivacySettings}
+          onClearData={clearSettingsDataBuckets}
+        />
       </section>
       <CommandPalette
         isOpen={isCommandPaletteOpen}

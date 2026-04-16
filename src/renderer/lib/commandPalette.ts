@@ -31,6 +31,7 @@ export interface BrowserCommandDeps {
   toggleSidebar?: () => Promise<void>
   openSidebarLibrary?: () => Promise<void>
   openSidebarHistory?: () => Promise<void>
+  openSettings?: () => Promise<void>
   openAiConfig?: () => Promise<void>
   summarizeActivePage?: () => Promise<void>
   askActivePage?: (input: string) => Promise<void>
@@ -39,6 +40,10 @@ export interface BrowserCommandDeps {
   validateAiConfig?: () => Promise<void>
   generateAutomationFromAi?: (input: string) => Promise<void>
   cancelAutomationGeneration?: () => Promise<void>
+  startLiveAgent?: (input: string) => Promise<void>
+  pauseLiveAgent?: () => Promise<void>
+  resumeLiveAgent?: () => Promise<void>
+  cancelLiveAgent?: () => Promise<void>
   activeTabId: string | null
 }
 
@@ -271,6 +276,19 @@ export const createBrowserCommands = (deps: BrowserCommandDeps): CommandPaletteC
       }
     },
     {
+      id: 'settings.open',
+      title: 'Settings: Open Panel',
+      description: 'Open the dedicated settings panel for general and privacy controls.',
+      keywords: ['settings', 'preferences', 'privacy', 'general', 'panel'],
+      run: async () => {
+        if (!deps.openSettings) {
+          throw new Error('Settings panel is unavailable.')
+        }
+
+        await deps.openSettings()
+      }
+    },
+    {
       id: 'ai.config.open',
       title: 'AI: Open Provider Configuration',
       description: 'Open sidebar and focus AI provider configuration controls.',
@@ -281,6 +299,59 @@ export const createBrowserCommands = (deps: BrowserCommandDeps): CommandPaletteC
         }
 
         await deps.openAiConfig()
+      }
+    },
+    {
+      id: 'ai.agent.start',
+      title: 'AI Agent: Start Live Agent Run',
+      description: 'Start a guided live-agent run with explicit approval checkpoints.',
+      argumentHint: '[prompt]',
+      keywords: ['ai', 'agent', 'live', 'start', 'run', 'approval'],
+      run: async (input: string) => {
+        if (!deps.startLiveAgent) {
+          throw new Error('Live Agent controls are unavailable.')
+        }
+
+        await deps.startLiveAgent(input)
+      }
+    },
+    {
+      id: 'ai.agent.pause',
+      title: 'AI Agent: Pause Live Agent Run',
+      description: 'Pause the active live-agent run at the next safe boundary.',
+      keywords: ['ai', 'agent', 'live', 'pause', 'hold'],
+      run: async () => {
+        if (!deps.pauseLiveAgent) {
+          throw new Error('Live Agent controls are unavailable.')
+        }
+
+        await deps.pauseLiveAgent()
+      }
+    },
+    {
+      id: 'ai.agent.resume',
+      title: 'AI Agent: Resume Live Agent Run',
+      description: 'Resume a paused live-agent run in the current tab context.',
+      keywords: ['ai', 'agent', 'live', 'resume', 'continue'],
+      run: async () => {
+        if (!deps.resumeLiveAgent) {
+          throw new Error('Live Agent controls are unavailable.')
+        }
+
+        await deps.resumeLiveAgent()
+      }
+    },
+    {
+      id: 'ai.agent.cancel',
+      title: 'AI Agent: Cancel Live Agent Run',
+      description: 'Cancel the active live-agent run immediately.',
+      keywords: ['ai', 'agent', 'live', 'cancel', 'stop'],
+      run: async () => {
+        if (!deps.cancelLiveAgent) {
+          throw new Error('Live Agent controls are unavailable.')
+        }
+
+        await deps.cancelLiveAgent()
       }
     },
     {
