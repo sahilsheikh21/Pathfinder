@@ -18,6 +18,13 @@ interface TabRecord {
   view: WebContentsView
 }
 
+export interface TabNavigationLifecycleEvent {
+  tabId: string
+  previousUrl: string | null
+  nextUrl: string
+  kind: 'navigate' | 'navigate-in-page' | 'reload'
+}
+
 const TAB_CHROME_HEIGHT = 88
 
 export class BrowserRuntime {
@@ -28,6 +35,8 @@ export class BrowserRuntime {
   private activeTabId: string | null = null
 
   private onTabClosedCallbacks: Array<(tabId: string) => void> = []
+
+  private onTabNavigationCallbacks: Array<(event: TabNavigationLifecycleEvent) => void> = []
 
   constructor(
     private readonly mainWindow: BrowserWindow,
@@ -160,6 +169,16 @@ export class BrowserRuntime {
     }
   }
 
+  onTabNavigation(callback: (event: TabNavigationLifecycleEvent) => void): () => void {
+    this.onTabNavigationCallbacks.push(callback)
+
+    return (): void => {
+      this.onTabNavigationCallbacks = this.onTabNavigationCallbacks.filter(
+        (candidate) => candidate !== callback
+      )
+    }
+  }
+
   navigate(request: BrowserNavigationRequest): BrowserTabState[] {
     const tab = this.tabs.get(request.tabId)
     if (!tab) {
@@ -243,6 +262,15 @@ export class BrowserRuntime {
   reload(tabId: string): BrowserTabState[] {
     const tab = this.tabs.get(tabId)
     if (tab) {
+      const currentUrl = tab.view.webContents.getURL() || tab.url
+      if (currentUrl) {
+        this.emitTabNavigation({
+          tabId: tab.id,
+          previousUrl: currentUrl,
+          nextUrl: currentUrl,
+          kind: 'reload'
+        })
+      }
       tab.view.webContents.reload()
     }
     this.emitState()
@@ -277,15 +305,35 @@ export class BrowserRuntime {
     })
 
     tab.view.webContents.on('did-navigate', (_event, url) => {
+      const previousUrl = tab.url || null
       tab.url = url
+      this.emitTabNavigation({
+        tabId: tab.id,
+        previousUrl,
+        nextUrl: url,
+        kind: previousUrl === url ? 'reload' : 'navigate'
+      })
       this.syncTabHistory(tab)
       this.emitState()
     })
 
     tab.view.webContents.on('did-navigate-in-page', (_event, url) => {
+      const previousUrl = tab.url || null
       tab.url = url
+      this.emitTabNavigation({
+        tabId: tab.id,
+        previousUrl,
+        nextUrl: url,
+        kind: 'navigate-in-page'
+      })
       this.syncTabHistory(tab)
       this.emitState()
+    })
+  }
+
+  private emitTabNavigation(event: TabNavigationLifecycleEvent): void {
+    this.onTabNavigationCallbacks.forEach((callback) => {
+      callback(event)
     })
   }
 

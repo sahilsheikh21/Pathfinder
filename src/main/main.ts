@@ -1005,6 +1005,20 @@ function createWindow(): void {
   browserRuntime.onTabClosed((tabId) => {
     actionRecorder?.stopForTargetLoss(tabId)
     automationPlayback?.stopForTargetLoss(tabId)
+    pageAnalysisService?.invalidateTabContext(tabId)
+  })
+
+  browserRuntime.onTabNavigation((event) => {
+    if (!pageAnalysisService) {
+      return
+    }
+
+    if (event.kind === 'reload') {
+      pageAnalysisService.invalidateTabContext(event.tabId)
+      return
+    }
+
+    pageAnalysisService.invalidateForNavigation(event.tabId, event.nextUrl)
   })
 
   downloadManager = new DownloadManager(
