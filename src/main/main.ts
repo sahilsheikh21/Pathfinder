@@ -26,9 +26,14 @@ import {
 import { createSecretStore, type SecretStore } from './llm/secretStore'
 import { createLLMAdapterService, type LLMAdapterService } from './llm/llmAdapterService'
 import { createPageAnalysisService, type PageAnalysisService } from './llm/pageAnalysisService'
+import {
+  createAutomationGenerationService,
+  type AutomationGenerationService
+} from './llm/automationGenerationService'
 import { loadSessionSnapshot, saveSessionSnapshot } from './sessionStore'
 import { IPC_CHANNELS, type AppPlatformResponse, type AppVersionResponse } from '../shared/ipc'
 import {
+  type AIAutomationGenerateResult,
   DEFAULT_HOME_SEARCH_TEMPLATE,
   type AutomationHistoryStatus,
   type AutomationPlaybackStartRequest,
@@ -54,6 +59,7 @@ let llmProviderConfigStore: ProviderConfigStore | null = null
 let llmSecretStore: SecretStore | null = null
 let llmAdapterService: LLMAdapterService | null = null
 let pageAnalysisService: PageAnalysisService | null = null
+let automationGenerationService: AutomationGenerationService | null = null
 
 const cdpPort = Number(process.env.PATHFINDER_CDP_PORT ?? '9222')
 const cdpEndpoint = `http://127.0.0.1:${cdpPort}`
@@ -222,6 +228,21 @@ const toUnavailablePageAnalysisResult = (
   citations: [],
   usedNonPageContext: false,
   error: toUnavailablePageAnalysisFailure(message)
+})
+
+const toUnavailableAIAutomationFailure = (message: string) => ({
+  reason: 'provider-error' as const,
+  message,
+  retryable: false,
+  userAction: 'check-llm-config' as const
+})
+
+const toUnavailableAIAutomationGenerateResult = (message: string): AIAutomationGenerateResult => ({
+  ok: false,
+  draft: null,
+  state: 'failed',
+  operationId: null,
+  error: toUnavailableAIAutomationFailure(message)
 })
 
 const toStepFailure = (
@@ -757,6 +778,46 @@ function registerIpcHandlers(): void {
     }
   })
 
+  ipcMain.handle(IPC_CHANNELS.aiAutomationGenerate, async (_event, request) => {
+    if (!automationGenerationService) {
+      return toUnavailableAIAutomationGenerateResult('AI automation generation service is not available.')
+    }
+
+    try {
+      return await automationGenerationService.generate(request)
+    } catch (error) {
+      return toUnavailableAIAutomationGenerateResult(
+        toRedactedMainErrorMessage(error, 'AI automation generation failed.')
+      )
+    }
+  })
+
+  ipcMain.handle(IPC_CHANNELS.aiAutomationCancel, (_event, request) => {
+    if (!automationGenerationService) {
+      return {
+        ok: false,
+        state: 'idle' as const,
+        operationId: request?.operationId ?? null
+      }
+    }
+
+    return automationGenerationService.cancel(request)
+  })
+
+  ipcMain.handle(IPC_CHANNELS.aiAutomationGetStatus, () => {
+    if (!automationGenerationService) {
+      return {
+        state: 'idle' as const,
+        operationId: null,
+        hasDraft: false,
+        updatedAt: null,
+        error: toUnavailableAIAutomationFailure('AI automation generation service is not available.')
+      }
+    }
+
+    return automationGenerationService.getStatus()
+  })
+
   ipcMain.handle(IPC_CHANNELS.pageAnalysisSummarize, async (_event, request) => {
     if (!pageAnalysisService) {
       return toUnavailablePageAnalysisResult('summarize', 'Page analysis service is not available.')
@@ -908,6 +969,10 @@ function createWindow(): void {
   if (llmAdapterService) {
     pageAnalysisService = createPageAnalysisService({
       resolveTarget: (tabId) => browserRuntime?.resolveAutomationTarget(tabId) ?? null,
+      llmAdapterService
+    })
+
+    automationGenerationService = createAutomationGenerationService({
       llmAdapterService
     })
   }
