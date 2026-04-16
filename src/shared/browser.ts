@@ -141,6 +141,137 @@ export interface LLMGenerateResult {
   error?: LLMGenerateError
 }
 
+export type PageAnalysisMode = 'summarize' | 'ask'
+
+export type PageAnalysisVerbosity = 'concise' | 'detailed'
+
+export type PageAnalysisConfidence = 'high' | 'medium' | 'low' | 'uncertain'
+
+export interface PageAnalysisSnapshotMetadata {
+  tabId: string
+  url: string
+  title: string
+  extractedAt: string
+  ttlMs: number
+  stale: boolean
+}
+
+export interface PageAnalysisCitationSource {
+  title: string
+  url: string
+}
+
+export interface PageAnalysisCitation {
+  id: string
+  marker: string
+  snippet: string
+  snippetIndex: number
+  extractedAt: string
+  source: PageAnalysisCitationSource
+}
+
+export interface PageAnalysisAnswerSection {
+  title: string
+  bullets: string[]
+}
+
+export interface PageAnalysisFailure {
+  reason:
+    | 'missing-target'
+    | 'extraction-failed'
+    | 'no-content'
+    | 'cancelled'
+    | 'invalid-config'
+    | 'auth'
+    | 'network'
+    | 'timeout'
+    | 'quota'
+    | 'provider-error'
+    | 'unsupported-claim'
+  message: string
+  userAction:
+    | 'retry'
+    | 'refresh-context'
+    | 'clear-context'
+    | 'check-llm-config'
+    | 'review-page-selection'
+    | 'none'
+  retryable: boolean
+}
+
+export interface PageAnalysisRequestBase {
+  tabId?: string
+  verbosity?: PageAnalysisVerbosity
+  includeNonPageContext?: boolean
+  forceRefresh?: boolean
+  allowOneTimeUnredacted?: boolean
+}
+
+export interface PageAnalysisSummarizeRequest extends PageAnalysisRequestBase {
+  mode?: 'summarize'
+}
+
+export interface PageAnalysisAskRequest extends PageAnalysisRequestBase {
+  mode?: 'ask'
+  question: string
+}
+
+export interface PageAnalysisResult {
+  ok: boolean
+  mode: PageAnalysisMode
+  answer: string
+  sections: PageAnalysisAnswerSection[]
+  confidence: PageAnalysisConfidence
+  snapshot: PageAnalysisSnapshotMetadata | null
+  citations: PageAnalysisCitation[]
+  staleWarning?: string
+  usedNonPageContext: boolean
+  error?: PageAnalysisFailure
+}
+
+export interface PageAnalysisCancelRequest {
+  operationId?: string
+}
+
+export interface PageAnalysisCancelResult {
+  ok: boolean
+  operationId: string | null
+  cancelled: boolean
+}
+
+export interface PageAnalysisRefreshContextRequest {
+  tabId?: string
+}
+
+export interface PageAnalysisRefreshContextResult {
+  ok: boolean
+  snapshot: PageAnalysisSnapshotMetadata | null
+  error?: PageAnalysisFailure
+}
+
+export interface PageAnalysisClearContextRequest {
+  tabId?: string
+}
+
+export interface PageAnalysisClearContextResult {
+  ok: boolean
+  tabId: string | null
+}
+
+export type PageAnalysisRunState = 'idle' | 'running' | 'cancelling'
+
+export interface PageAnalysisStatusRequest {
+  tabId?: string
+}
+
+export interface PageAnalysisStatusResult {
+  state: PageAnalysisRunState
+  operationId: string | null
+  tabId: string | null
+  hasContext: boolean
+  snapshot: PageAnalysisSnapshotMetadata | null
+}
+
 export interface QuickSearchOpenRequest {
   query?: string
 }

@@ -27,6 +27,17 @@ import type {
   LLMProviderConfigPatch,
   LLMValidateConfigRequest,
   LLMValidateConfigResult,
+  PageAnalysisAskRequest,
+  PageAnalysisCancelRequest,
+  PageAnalysisCancelResult,
+  PageAnalysisClearContextRequest,
+  PageAnalysisClearContextResult,
+  PageAnalysisRefreshContextRequest,
+  PageAnalysisRefreshContextResult,
+  PageAnalysisResult,
+  PageAnalysisStatusRequest,
+  PageAnalysisStatusResult,
+  PageAnalysisSummarizeRequest,
   RecorderStartRequest,
   RecorderStartResult,
   RecorderStatus,
@@ -91,7 +102,13 @@ export const IPC_CHANNELS = {
   llmGetConfig: 'llm:getConfig',
   llmSaveConfig: 'llm:saveConfig',
   llmValidateConfig: 'llm:validateConfig',
-  llmGenerate: 'llm:generate'
+  llmGenerate: 'llm:generate',
+  pageAnalysisSummarize: 'pageAnalysis:summarize',
+  pageAnalysisAsk: 'pageAnalysis:ask',
+  pageAnalysisCancel: 'pageAnalysis:cancel',
+  pageAnalysisRefreshContext: 'pageAnalysis:refreshContext',
+  pageAnalysisClearContext: 'pageAnalysis:clearContext',
+  pageAnalysisGetStatus: 'pageAnalysis:getStatus'
 } as const
 
 export type IpcChannel = (typeof IPC_CHANNELS)[keyof typeof IPC_CHANNELS]
@@ -164,4 +181,14 @@ export interface PathfinderApi {
   llmSaveConfig: (patch: LLMProviderConfigPatch) => Promise<LLMAdapterConfigState>
   llmValidateConfig: (request: LLMValidateConfigRequest) => Promise<LLMValidateConfigResult>
   llmGenerate: (request: LLMGenerateRequest) => Promise<LLMGenerateResult>
+  pageAnalysisSummarize?: (request?: PageAnalysisSummarizeRequest) => Promise<PageAnalysisResult>
+  pageAnalysisAsk?: (request: PageAnalysisAskRequest) => Promise<PageAnalysisResult>
+  pageAnalysisCancel?: (request?: PageAnalysisCancelRequest) => Promise<PageAnalysisCancelResult>
+  pageAnalysisRefreshContext?: (
+    request?: PageAnalysisRefreshContextRequest
+  ) => Promise<PageAnalysisRefreshContextResult>
+  pageAnalysisClearContext?: (
+    request?: PageAnalysisClearContextRequest
+  ) => Promise<PageAnalysisClearContextResult>
+  pageAnalysisGetStatus?: (request?: PageAnalysisStatusRequest) => Promise<PageAnalysisStatusResult>
 }
