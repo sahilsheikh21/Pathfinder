@@ -201,6 +201,14 @@ Success criteria:
 ### Phase 11: Page Analysis
 Goal: Deliver AI Q&A on current page context.
 Requirements: AI-02
+Status: Planned (2026-04-16)
+**Plans:** 3 plans
+
+Plans:
+- [ ] 11-01-PLAN.md - Define page-analysis contracts and extraction/grounding service core
+- [ ] 11-02-PLAN.md - Wire main/preload page-analysis handlers and lifecycle invalidation
+- [ ] 11-03-PLAN.md - Implement sidebar and command UX with grounded citations and controls
+
 Success criteria:
 1. User can request summary or Q&A for active page from command/UI entry points.
 2. Responses are grounded to extracted page content with lightweight citation/context snippets.
@@ -257,4 +265,4 @@ Success criteria:
 
 ---
 *Roadmap created: 2026-04-14*
-*Last updated: 2026-04-15 after phase 10 execution*
+*Last updated: 2026-04-16 after phase 11 planning*
