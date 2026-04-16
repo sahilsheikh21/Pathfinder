@@ -225,13 +225,13 @@ Success criteria:
 ### Phase 13: Live Agent Mode
 Goal: Allow AI-assisted multi-step execution under explicit user control.
 Requirements: AI-04
-Status: Planned (2026-04-16)
+Status: Complete (2026-04-16)
 **Plans:** 3 plans
 
 Plans:
-- [ ] 13-01-PLAN.md - Define live-agent contracts, risk policy, and orchestration control APIs
-- [ ] 13-02-PLAN.md - Implement approval enforcement, audit persistence, and run-control semantics
-- [ ] 13-03-PLAN.md - Build sidebar/command live-agent controls and step timeline visibility
+- [x] 13-01-PLAN.md - Define live-agent contracts, risk policy, and orchestration control APIs
+- [x] 13-02-PLAN.md - Implement approval enforcement, audit persistence, and run-control semantics
+- [x] 13-03-PLAN.md - Build sidebar/command live-agent controls and step timeline visibility
 
 Success criteria:
 1. High-impact actions are blocked until explicit user approval is granted.
@@ -243,6 +243,14 @@ Success criteria:
 ### Phase 14: Settings System
 Goal: Complete user-facing configuration surface for browser and privacy behavior.
 Requirements: SET-01, SET-03
+Status: Planned (2026-04-16)
+**Plans:** 3 plans
+
+Plans:
+- [ ] 14-01-PLAN.md - Define canonical settings contracts, store validation, and secure IPC bridge
+- [ ] 14-02-PLAN.md - Implement privacy clear-data execution and global cookie-mode policy wiring
+- [ ] 14-03-PLAN.md - Build dedicated settings UI and connect typed general/privacy flows
+
 Success criteria:
 1. General settings for startup/homepage/downloads persist across restarts.
 2. Privacy settings include clear-data flows and cookie preference controls.
@@ -273,4 +281,4 @@ Success criteria:
 
 ---
 *Roadmap created: 2026-04-14*
-*Last updated: 2026-04-16 after phase 11 execution*
+*Last updated: 2026-04-16 after phase 14 planning*
