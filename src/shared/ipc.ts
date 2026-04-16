@@ -181,14 +181,14 @@ export interface PathfinderApi {
   llmSaveConfig: (patch: LLMProviderConfigPatch) => Promise<LLMAdapterConfigState>
   llmValidateConfig: (request: LLMValidateConfigRequest) => Promise<LLMValidateConfigResult>
   llmGenerate: (request: LLMGenerateRequest) => Promise<LLMGenerateResult>
-  pageAnalysisSummarize?: (request?: PageAnalysisSummarizeRequest) => Promise<PageAnalysisResult>
-  pageAnalysisAsk?: (request: PageAnalysisAskRequest) => Promise<PageAnalysisResult>
-  pageAnalysisCancel?: (request?: PageAnalysisCancelRequest) => Promise<PageAnalysisCancelResult>
-  pageAnalysisRefreshContext?: (
+  pageAnalysisSummarize: (request?: PageAnalysisSummarizeRequest) => Promise<PageAnalysisResult>
+  pageAnalysisAsk: (request: PageAnalysisAskRequest) => Promise<PageAnalysisResult>
+  pageAnalysisCancel: (request?: PageAnalysisCancelRequest) => Promise<PageAnalysisCancelResult>
+  pageAnalysisRefreshContext: (
     request?: PageAnalysisRefreshContextRequest
   ) => Promise<PageAnalysisRefreshContextResult>
-  pageAnalysisClearContext?: (
+  pageAnalysisClearContext: (
     request?: PageAnalysisClearContextRequest
   ) => Promise<PageAnalysisClearContextResult>
-  pageAnalysisGetStatus?: (request?: PageAnalysisStatusRequest) => Promise<PageAnalysisStatusResult>
+  pageAnalysisGetStatus: (request?: PageAnalysisStatusRequest) => Promise<PageAnalysisStatusResult>
 }

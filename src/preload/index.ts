@@ -80,7 +80,17 @@ const api: PathfinderApi = {
   llmGetConfig: async () => ipcRenderer.invoke(IPC_CHANNELS.llmGetConfig),
   llmSaveConfig: async (patch) => ipcRenderer.invoke(IPC_CHANNELS.llmSaveConfig, patch),
   llmValidateConfig: async (request) => ipcRenderer.invoke(IPC_CHANNELS.llmValidateConfig, request),
-  llmGenerate: async (request) => ipcRenderer.invoke(IPC_CHANNELS.llmGenerate, request)
+  llmGenerate: async (request) => ipcRenderer.invoke(IPC_CHANNELS.llmGenerate, request),
+  pageAnalysisSummarize: async (request) =>
+    ipcRenderer.invoke(IPC_CHANNELS.pageAnalysisSummarize, request),
+  pageAnalysisAsk: async (request) => ipcRenderer.invoke(IPC_CHANNELS.pageAnalysisAsk, request),
+  pageAnalysisCancel: async (request) => ipcRenderer.invoke(IPC_CHANNELS.pageAnalysisCancel, request),
+  pageAnalysisRefreshContext: async (request) =>
+    ipcRenderer.invoke(IPC_CHANNELS.pageAnalysisRefreshContext, request),
+  pageAnalysisClearContext: async (request) =>
+    ipcRenderer.invoke(IPC_CHANNELS.pageAnalysisClearContext, request),
+  pageAnalysisGetStatus: async (request) =>
+    ipcRenderer.invoke(IPC_CHANNELS.pageAnalysisGetStatus, request)
 }
 
 contextBridge.exposeInMainWorld('pathfinder', api)
