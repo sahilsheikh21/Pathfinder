@@ -52,6 +52,88 @@ export interface HomePreferences {
   searchTemplate: string
 }
 
+export type BrowserStartupMode = 'restore-last-session' | 'open-home' | 'open-urls'
+
+export type BrowserHomepageMode = 'home-starter' | 'custom-url'
+
+export type BrowserDownloadsMode = 'ask-every-time' | 'fixed-path'
+
+export type BrowserCookieMode = 'allow-all' | 'block-third-party' | 'block-all'
+
+export type BrowserClearDataBucket =
+  | 'history-downloads'
+  | 'cookies-site-data'
+  | 'cache-storage'
+  | 'app-settings-subset'
+
+export interface BrowserGeneralSettings {
+  startupMode: BrowserStartupMode
+  startupUrls: string[]
+  homepageMode: BrowserHomepageMode
+  homepageUrl: string
+  downloadsMode: BrowserDownloadsMode
+  downloadsPath: string
+}
+
+export interface BrowserPrivacySettings {
+  cookieMode: BrowserCookieMode
+}
+
+export interface BrowserSettingsRepairNotice {
+  reason: 'corrupted-file' | 'invalid-shape' | 'validation-failed'
+  repairedAt: string
+}
+
+export interface BrowserSettingsSnapshot {
+  general: BrowserGeneralSettings
+  privacy: BrowserPrivacySettings
+  updatedAt: string
+  repairNotice: BrowserSettingsRepairNotice | null
+}
+
+export interface BrowserSettingsValidationError {
+  field: string
+  code: 'required' | 'invalid-value' | 'invalid-url' | 'invalid-path' | 'invalid-selection'
+  message: string
+}
+
+export interface BrowserSettingsSaveGeneralRequest {
+  general: BrowserGeneralSettings
+}
+
+export interface BrowserSettingsSavePrivacyRequest {
+  privacy: BrowserPrivacySettings
+}
+
+export interface BrowserSettingsSaveGeneralResult {
+  ok: boolean
+  snapshot: BrowserSettingsSnapshot
+  validationError?: BrowserSettingsValidationError
+}
+
+export interface BrowserSettingsSavePrivacyResult {
+  ok: boolean
+  snapshot: BrowserSettingsSnapshot
+  validationError?: BrowserSettingsValidationError
+}
+
+export interface BrowserClearDataRequest {
+  buckets: BrowserClearDataBucket[]
+}
+
+export interface ClearDataBucketResult {
+  bucket: BrowserClearDataBucket
+  ok: boolean
+  message: string
+}
+
+export interface BrowserSettingsClearDataResult {
+  ok: boolean
+  snapshot: BrowserSettingsSnapshot
+  bucketResults: ClearDataBucketResult[]
+  validationError?: BrowserSettingsValidationError
+}
+
 export type LLMProviderId = 'openai' | 'ollama'
 
 export interface LLMProviderCapability {
@@ -208,6 +290,158 @@ export interface AIAutomationCancelResult {
   ok: boolean
   state: AIAutomationGenerationState
   operationId: string | null
+}
+
+export type LiveAgentRiskTier = 'low' | 'high'
+
+export type LiveAgentRunState =
+  | 'idle'
+  | 'planning'
+  | 'running'
+  | 'waiting-approval'
+  | 'paused'
+  | 'completed'
+  | 'failed'
+  | 'cancelled'
+
+export type LiveAgentApprovalDecision = 'approved' | 'rejected' | 'not-required'
+
+export interface LiveAgentStepSummary {
+  id: string
+  seq: number
+  action: RecorderAction
+  target?: string
+  expectedSideEffect: string
+  rationale: string
+  riskTier: LiveAgentRiskTier
+}
+
+export interface LiveAgentApprovalBatch {
+  batchId: string
+  runId: string
+  size: number
+  stepIds: string[]
+  steps: LiveAgentStepSummary[]
+  createdAt: string
+}
+
+export interface LiveAgentError {
+  reason:
+    | 'busy'
+    | 'invalid-state'
+    | 'missing-run'
+    | 'approval-required'
+    | 'context-mismatch'
+    | 'cancelled'
+    | 'failed'
+  message: string
+  retryable: boolean
+}
+
+export interface LiveAgentStartRequest {
+  prompt: string
+  tabId?: string
+  batchSize?: number
+  proposedSteps?: LiveAgentStepSummary[]
+}
+
+export interface LiveAgentStartResult {
+  ok: boolean
+  runId: string | null
+  state: LiveAgentRunState
+  approvalBatch: LiveAgentApprovalBatch | null
+  message?: string
+  error?: LiveAgentError
+}
+
+export interface LiveAgentStatusRequest {
+  runId?: string
+}
+
+export interface LiveAgentStatusResult {
+  state: LiveAgentRunState
+  runId: string | null
+  tabId: string | null
+  approvalBatch: LiveAgentApprovalBatch | null
+  nextStep: LiveAgentStepSummary | null
+  completedSteps: number
+  totalSteps: number
+  updatedAt: string | null
+  error?: LiveAgentError
+}
+
+export interface LiveAgentApproveBatchRequest {
+  runId?: string
+  batchId: string
+  decision: 'approve' | 'reject'
+}
+
+export interface LiveAgentApproveBatchResult {
+  ok: boolean
+  runId: string | null
+  state: LiveAgentRunState
+  approvalBatch: LiveAgentApprovalBatch | null
+  message?: string
+  error?: LiveAgentError
+}
+
+export interface LiveAgentPauseRequest {
+  runId?: string
+}
+
+export interface LiveAgentPauseResult {
+  ok: boolean
+  runId: string | null
+  state: LiveAgentRunState
+  paused: boolean
+  error?: LiveAgentError
+}
+
+export interface LiveAgentResumeRequest {
+  runId?: string
+  tabId?: string
+}
+
+export interface LiveAgentResumeResult {
+  ok: boolean
+  runId: string | null
+  state: LiveAgentRunState
+  resumed: boolean
+  error?: LiveAgentError
+}
+
+export interface LiveAgentCancelRequest {
+  runId?: string
+}
+
+export interface LiveAgentCancelResult {
+  ok: boolean
+  runId: string | null
+  state: LiveAgentRunState
+  cancelled: boolean
+  error?: LiveAgentError
+}
+
+export interface LiveAgentStepAuditEvent {
+  id: string
+  runId: string
+  stepId: string
+  stepIndex: number
+  actionSummary: string
+  riskTier: LiveAgentRiskTier
+  approvalDecision: LiveAgentApprovalDecision
+  observedResult: string
+  nextStepRationale: string
+  createdAt: string
+}
+
+export interface LiveAgentGetAuditTrailRequest {
+  runId: string
+}
+
+export interface LiveAgentGetAuditTrailResult {
+  runId: string
+  events: LiveAgentStepAuditEvent[]
 }
 
 export type PageAnalysisMode = 'summarize' | 'ask'

@@ -77,6 +77,11 @@ const api: PathfinderApi = {
   upsertQuickLink: async (quickLink) => ipcRenderer.invoke(IPC_CHANNELS.homeUpsertQuickLink, quickLink),
   removeQuickLink: async (quickLinkId: string) => ipcRenderer.invoke(IPC_CHANNELS.homeRemoveQuickLink, quickLinkId),
   listRecentAutomations: async () => ipcRenderer.invoke(IPC_CHANNELS.homeListRecentAutomations),
+  settingsGetSnapshot: async () => ipcRenderer.invoke(IPC_CHANNELS.settingsGetSnapshot),
+  settingsSaveGeneral: async (request) => ipcRenderer.invoke(IPC_CHANNELS.settingsSaveGeneral, request),
+  settingsSavePrivacy: async (request) => ipcRenderer.invoke(IPC_CHANNELS.settingsSavePrivacy, request),
+  settingsClearData: async (request) => ipcRenderer.invoke(IPC_CHANNELS.settingsClearData, request),
+  settingsGetRepairNotice: async () => ipcRenderer.invoke(IPC_CHANNELS.settingsGetRepairNotice),
   llmGetConfig: async () => ipcRenderer.invoke(IPC_CHANNELS.llmGetConfig),
   llmSaveConfig: async (patch) => ipcRenderer.invoke(IPC_CHANNELS.llmSaveConfig, patch),
   llmValidateConfig: async (request) => ipcRenderer.invoke(IPC_CHANNELS.llmValidateConfig, request),
@@ -84,6 +89,15 @@ const api: PathfinderApi = {
   aiAutomationGenerate: async (request) => ipcRenderer.invoke(IPC_CHANNELS.aiAutomationGenerate, request),
   aiAutomationCancel: async (request) => ipcRenderer.invoke(IPC_CHANNELS.aiAutomationCancel, request),
   aiAutomationGetStatus: async () => ipcRenderer.invoke(IPC_CHANNELS.aiAutomationGetStatus),
+  liveAgentStart: async (request) => ipcRenderer.invoke(IPC_CHANNELS.liveAgentStart, request),
+  liveAgentGetStatus: async (request) => ipcRenderer.invoke(IPC_CHANNELS.liveAgentGetStatus, request),
+  liveAgentApproveBatch: async (request) =>
+    ipcRenderer.invoke(IPC_CHANNELS.liveAgentApproveBatch, request),
+  liveAgentPause: async (request) => ipcRenderer.invoke(IPC_CHANNELS.liveAgentPause, request),
+  liveAgentResume: async (request) => ipcRenderer.invoke(IPC_CHANNELS.liveAgentResume, request),
+  liveAgentCancel: async (request) => ipcRenderer.invoke(IPC_CHANNELS.liveAgentCancel, request),
+  liveAgentGetAuditTrail: async (request) =>
+    ipcRenderer.invoke(IPC_CHANNELS.liveAgentGetAuditTrail, request),
   pageAnalysisSummarize: async (request) =>
     ipcRenderer.invoke(IPC_CHANNELS.pageAnalysisSummarize, request),
   pageAnalysisAsk: async (request) => ipcRenderer.invoke(IPC_CHANNELS.pageAnalysisAsk, request),

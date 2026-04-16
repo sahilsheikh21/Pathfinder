@@ -1,6 +1,20 @@
 import type {
   AIAutomationCancelRequest,
   AIAutomationCancelResult,
+  LiveAgentApproveBatchRequest,
+  LiveAgentApproveBatchResult,
+  LiveAgentCancelRequest,
+  LiveAgentCancelResult,
+  LiveAgentGetAuditTrailRequest,
+  LiveAgentGetAuditTrailResult,
+  LiveAgentPauseRequest,
+  LiveAgentPauseResult,
+  LiveAgentResumeRequest,
+  LiveAgentResumeResult,
+  LiveAgentStartRequest,
+  LiveAgentStartResult,
+  LiveAgentStatusRequest,
+  LiveAgentStatusResult,
   AIAutomationGenerateRequest,
   AIAutomationGenerateResult,
   AIAutomationStatusResult,
@@ -22,6 +36,14 @@ import type {
   AutomationSidebarPreferences,
   AutomationSidebarPreferencesUpdateRequest,
   AutomationBridgeStatus,
+  BrowserClearDataRequest,
+  BrowserSettingsClearDataResult,
+  BrowserSettingsRepairNotice,
+  BrowserSettingsSaveGeneralRequest,
+  BrowserSettingsSaveGeneralResult,
+  BrowserSettingsSavePrivacyRequest,
+  BrowserSettingsSavePrivacyResult,
+  BrowserSettingsSnapshot,
   AutomationConnectRequest,
   AutomationConnectResult,
   AutomationDisconnectRequest,
@@ -104,6 +126,11 @@ export const IPC_CHANNELS = {
   homeUpsertQuickLink: 'home:upsertQuickLink',
   homeRemoveQuickLink: 'home:removeQuickLink',
   homeListRecentAutomations: 'home:listRecentAutomations',
+  settingsGetSnapshot: 'settings:getSnapshot',
+  settingsSaveGeneral: 'settings:saveGeneral',
+  settingsSavePrivacy: 'settings:savePrivacy',
+  settingsClearData: 'settings:clearData',
+  settingsGetRepairNotice: 'settings:getRepairNotice',
   llmGetConfig: 'llm:getConfig',
   llmSaveConfig: 'llm:saveConfig',
   llmValidateConfig: 'llm:validateConfig',
@@ -111,6 +138,13 @@ export const IPC_CHANNELS = {
   aiAutomationGenerate: 'aiAutomation:generate',
   aiAutomationCancel: 'aiAutomation:cancel',
   aiAutomationGetStatus: 'aiAutomation:getStatus',
+  liveAgentStart: 'liveAgent:start',
+  liveAgentGetStatus: 'liveAgent:getStatus',
+  liveAgentApproveBatch: 'liveAgent:approveBatch',
+  liveAgentPause: 'liveAgent:pause',
+  liveAgentResume: 'liveAgent:resume',
+  liveAgentCancel: 'liveAgent:cancel',
+  liveAgentGetAuditTrail: 'liveAgent:getAuditTrail',
   pageAnalysisSummarize: 'pageAnalysis:summarize',
   pageAnalysisAsk: 'pageAnalysis:ask',
   pageAnalysisCancel: 'pageAnalysis:cancel',
@@ -185,6 +219,15 @@ export interface PathfinderApi {
   upsertQuickLink: (quickLink: QuickLink) => Promise<QuickLink[]>
   removeQuickLink: (quickLinkId: string) => Promise<QuickLink[]>
   listRecentAutomations: () => Promise<RecentAutomationPreview[]>
+  settingsGetSnapshot: () => Promise<BrowserSettingsSnapshot>
+  settingsSaveGeneral: (
+    request: BrowserSettingsSaveGeneralRequest
+  ) => Promise<BrowserSettingsSaveGeneralResult>
+  settingsSavePrivacy: (
+    request: BrowserSettingsSavePrivacyRequest
+  ) => Promise<BrowserSettingsSavePrivacyResult>
+  settingsClearData: (request: BrowserClearDataRequest) => Promise<BrowserSettingsClearDataResult>
+  settingsGetRepairNotice: () => Promise<BrowserSettingsRepairNotice | null>
   llmGetConfig: () => Promise<LLMAdapterConfigState>
   llmSaveConfig: (patch: LLMProviderConfigPatch) => Promise<LLMAdapterConfigState>
   llmValidateConfig: (request: LLMValidateConfigRequest) => Promise<LLMValidateConfigResult>
@@ -192,6 +235,15 @@ export interface PathfinderApi {
   aiAutomationGenerate: (request: AIAutomationGenerateRequest) => Promise<AIAutomationGenerateResult>
   aiAutomationCancel: (request?: AIAutomationCancelRequest) => Promise<AIAutomationCancelResult>
   aiAutomationGetStatus: () => Promise<AIAutomationStatusResult>
+  liveAgentStart: (request: LiveAgentStartRequest) => Promise<LiveAgentStartResult>
+  liveAgentGetStatus: (request?: LiveAgentStatusRequest) => Promise<LiveAgentStatusResult>
+  liveAgentApproveBatch: (request: LiveAgentApproveBatchRequest) => Promise<LiveAgentApproveBatchResult>
+  liveAgentPause: (request?: LiveAgentPauseRequest) => Promise<LiveAgentPauseResult>
+  liveAgentResume: (request?: LiveAgentResumeRequest) => Promise<LiveAgentResumeResult>
+  liveAgentCancel: (request?: LiveAgentCancelRequest) => Promise<LiveAgentCancelResult>
+  liveAgentGetAuditTrail: (
+    request: LiveAgentGetAuditTrailRequest
+  ) => Promise<LiveAgentGetAuditTrailResult>
   pageAnalysisSummarize: (request?: PageAnalysisSummarizeRequest) => Promise<PageAnalysisResult>
   pageAnalysisAsk: (request: PageAnalysisAskRequest) => Promise<PageAnalysisResult>
   pageAnalysisCancel: (request?: PageAnalysisCancelRequest) => Promise<PageAnalysisCancelResult>
