@@ -720,6 +720,7 @@ function App() {
     setPageAnalysisCacheByTabId((current) => {
       const tabUrlById = new Map(tabs.map((tab) => [tab.id, tab.url]))
       let changed = false
+      let invalidatedActiveTab = false
       const next = { ...current }
 
       for (const [tabId, entry] of Object.entries(current)) {
@@ -729,12 +730,33 @@ function App() {
         if (!currentUrl || (snapshotUrl && snapshotUrl !== currentUrl)) {
           delete next[tabId]
           changed = true
+          if (tabId === activeTabId) {
+            invalidatedActiveTab = true
+          }
         }
+      }
+
+      if (invalidatedActiveTab) {
+        setPageAnalysisStatusTone('neutral')
+        setPageAnalysisStatusMessage('Page changed. Refresh context before follow-up questions.')
       }
 
       return changed ? next : current
     })
-  }, [tabs])
+  }, [activeTabId, tabs])
+
+  useEffect(() => {
+    if (!activePageAnalysisStale || pageAnalysisBusyState !== 'idle') {
+      return
+    }
+
+    setPageAnalysisStatusTone((current) => (current === 'error' ? current : 'neutral'))
+    setPageAnalysisStatusMessage((current) =>
+      current.includes('stale')
+        ? current
+        : 'Analysis context may be stale. Refresh context for best results.'
+    )
+  }, [activePageAnalysisStale, pageAnalysisBusyState])
 
   useEffect(() => {
     void refreshPageAnalysisStatus()
