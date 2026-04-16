@@ -1,4 +1,9 @@
 import type {
+  AIAutomationCancelRequest,
+  AIAutomationCancelResult,
+  AIAutomationGenerateRequest,
+  AIAutomationGenerateResult,
+  AIAutomationStatusResult,
   AutomationHistoryClearRequest,
   AutomationHistoryListRequest,
   AutomationHistoryListResult,
@@ -103,6 +108,9 @@ export const IPC_CHANNELS = {
   llmSaveConfig: 'llm:saveConfig',
   llmValidateConfig: 'llm:validateConfig',
   llmGenerate: 'llm:generate',
+  aiAutomationGenerate: 'aiAutomation:generate',
+  aiAutomationCancel: 'aiAutomation:cancel',
+  aiAutomationGetStatus: 'aiAutomation:getStatus',
   pageAnalysisSummarize: 'pageAnalysis:summarize',
   pageAnalysisAsk: 'pageAnalysis:ask',
   pageAnalysisCancel: 'pageAnalysis:cancel',
@@ -181,6 +189,9 @@ export interface PathfinderApi {
   llmSaveConfig: (patch: LLMProviderConfigPatch) => Promise<LLMAdapterConfigState>
   llmValidateConfig: (request: LLMValidateConfigRequest) => Promise<LLMValidateConfigResult>
   llmGenerate: (request: LLMGenerateRequest) => Promise<LLMGenerateResult>
+  aiAutomationGenerate: (request: AIAutomationGenerateRequest) => Promise<AIAutomationGenerateResult>
+  aiAutomationCancel: (request?: AIAutomationCancelRequest) => Promise<AIAutomationCancelResult>
+  aiAutomationGetStatus: () => Promise<AIAutomationStatusResult>
   pageAnalysisSummarize: (request?: PageAnalysisSummarizeRequest) => Promise<PageAnalysisResult>
   pageAnalysisAsk: (request: PageAnalysisAskRequest) => Promise<PageAnalysisResult>
   pageAnalysisCancel: (request?: PageAnalysisCancelRequest) => Promise<PageAnalysisCancelResult>

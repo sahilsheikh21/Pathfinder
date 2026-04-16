@@ -81,6 +81,9 @@ const api: PathfinderApi = {
   llmSaveConfig: async (patch) => ipcRenderer.invoke(IPC_CHANNELS.llmSaveConfig, patch),
   llmValidateConfig: async (request) => ipcRenderer.invoke(IPC_CHANNELS.llmValidateConfig, request),
   llmGenerate: async (request) => ipcRenderer.invoke(IPC_CHANNELS.llmGenerate, request),
+  aiAutomationGenerate: async (request) => ipcRenderer.invoke(IPC_CHANNELS.aiAutomationGenerate, request),
+  aiAutomationCancel: async (request) => ipcRenderer.invoke(IPC_CHANNELS.aiAutomationCancel, request),
+  aiAutomationGetStatus: async () => ipcRenderer.invoke(IPC_CHANNELS.aiAutomationGetStatus),
   pageAnalysisSummarize: async (request) =>
     ipcRenderer.invoke(IPC_CHANNELS.pageAnalysisSummarize, request),
   pageAnalysisAsk: async (request) => ipcRenderer.invoke(IPC_CHANNELS.pageAnalysisAsk, request),

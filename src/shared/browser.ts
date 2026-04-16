@@ -141,6 +141,75 @@ export interface LLMGenerateResult {
   error?: LLMGenerateError
 }
 
+export interface AIAutomationGenerateConstraints {
+  targetUrl?: string
+  objective?: string
+  variables?: string[]
+  notes?: string
+}
+
+export interface AIAutomationGenerateRequest {
+  prompt: string
+  constraints?: AIAutomationGenerateConstraints
+  tabId?: string
+}
+
+export interface AIAutomationGeneratedDraft {
+  workflow: RecorderWorkflowDocument
+  warnings: string[]
+}
+
+export interface AIAutomationGenerateFailure {
+  reason:
+    | 'invalid-draft'
+    | 'unsupported-intent'
+    | 'invalid-config'
+    | 'auth'
+    | 'network'
+    | 'timeout'
+    | 'quota'
+    | 'provider-error'
+    | 'cancelled'
+    | 'failed'
+  message: string
+  retryable: boolean
+  userAction: 'retry' | 'edit-prompt' | 'check-llm-config' | 'none'
+}
+
+export interface AIAutomationGenerateResult {
+  ok: boolean
+  draft: AIAutomationGeneratedDraft | null
+  state: AIAutomationGenerationState
+  operationId: string | null
+  error?: AIAutomationGenerateFailure
+}
+
+export type AIAutomationGenerationState =
+  | 'idle'
+  | 'generating'
+  | 'validating'
+  | 'ready'
+  | 'failed'
+  | 'cancelled'
+
+export interface AIAutomationStatusResult {
+  state: AIAutomationGenerationState
+  operationId: string | null
+  hasDraft: boolean
+  updatedAt: string | null
+  error?: AIAutomationGenerateFailure
+}
+
+export interface AIAutomationCancelRequest {
+  operationId?: string
+}
+
+export interface AIAutomationCancelResult {
+  ok: boolean
+  state: AIAutomationGenerationState
+  operationId: string | null
+}
+
 export type PageAnalysisMode = 'summarize' | 'ask'
 
 export type PageAnalysisVerbosity = 'concise' | 'detailed'
