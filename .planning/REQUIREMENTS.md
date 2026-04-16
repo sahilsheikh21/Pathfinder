@@ -37,7 +37,7 @@
 - [x] **AI-02**: User can ask AI about the current page and receive answers grounded in extracted page content.
 - [x] **AI-03**: User can request AI-generated automation drafts from natural-language prompts.
 - [ ] **AI-04**: System requires explicit user approval before AI executes high-impact or irreversible actions.
-- [ ] **AI-05**: User can run AI commands from the command palette with visible progress and cancellation.
+- [x] **AI-05**: User can run AI commands from the command palette with visible progress and cancellation.
 
 ### Sidebar, Settings, Privacy, and Delivery
 
@@ -94,7 +94,7 @@
 | AI-02 | Phase 11 | Complete |
 | AI-03 | Phase 12 | Complete |
 | AI-04 | Phase 13 | Pending |
-| AI-05 | Phase 12 | Pending |
+| AI-05 | Phase 12 | Complete |
 | SIDE-01 | Phase 9 | Pending |
 | SET-01 | Phase 14 | Pending |
 | SET-02 | Phase 15 | Pending |

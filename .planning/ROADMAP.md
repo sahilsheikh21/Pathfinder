@@ -29,7 +29,7 @@
 | 9 | Sidebar and history | 4/4 | Complete | 2026-04-15 |
 | 10 | LLM adapter layer | 3/3 | Complete    | 2026-04-15 |
 | 11 | Page analysis | 2/3 | In Progress|  |
-| 12 | AI automation generation | 1/2 | In Progress|  |
+| 12 | AI automation generation | 2/2 | Complete   | 2026-04-16 |
 | 13 | Live agent mode | Controlled multi-step AI execution with approvals | AI-04 | 3 |
 | 14 | Settings system | Full general/privacy configuration surface | SET-01, SET-03 | 3 |
 | 15 | Theming and shortcuts | Appearance controls and keyboard customization | SET-02, SET-05 | 3 |
