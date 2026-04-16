@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   type AutomationHistoryEntry,
   type AutomationHistoryListRequest,
@@ -11,6 +11,11 @@ import {
   type AutomationSidebarPreferences,
   type AutomationSidebarSection,
   type LLMAdapterConfigState,
+  type PageAnalysisFailure,
+  type PageAnalysisMode,
+  type PageAnalysisResult,
+  type PageAnalysisStatusResult,
+  type PageAnalysisVerbosity,
   type LLMProviderId,
   HOME_STARTER_URL,
   type RecorderStartRequest,
@@ -42,6 +47,30 @@ const getPlaybackFailureMessage = (result: AutomationPlaybackStartResult): strin
   return `Playback start failed: ${result.reason}`
 }
 
+const getPageAnalysisUserActionLabel = (action: PageAnalysisFailure['userAction']): string => {
+  if (action === 'retry') {
+    return 'Retry'
+  }
+
+  if (action === 'refresh-context') {
+    return 'Refresh Context'
+  }
+
+  if (action === 'clear-context') {
+    return 'Clear Context'
+  }
+
+  if (action === 'check-llm-config') {
+    return 'Open AI Settings'
+  }
+
+  if (action === 'review-page-selection') {
+    return 'Review Selection'
+  }
+
+  return 'Continue'
+}
+
 type PendingPlaybackRequest =
   | { kind: 'path'; workflowPath: string; label: string }
   | { kind: 'library'; libraryId: string; label: string }
@@ -52,6 +81,21 @@ const DEFAULT_SIDEBAR_PREFERENCES: AutomationSidebarPreferences = {
   width: 320,
   activeSection: 'library',
   sectionState: {}
+}
+
+const DEFAULT_PAGE_ANALYSIS_STATUS: PageAnalysisStatusResult = {
+  state: 'idle',
+  operationId: null,
+  tabId: null,
+  hasContext: false,
+  snapshot: null
+}
+
+const DEFAULT_PAGE_ANALYSIS_VERBOSITY: PageAnalysisVerbosity = 'concise'
+
+interface PageAnalysisCacheEntry {
+  result: PageAnalysisResult
+  updatedAt: string
 }
 
 const mergeSectionState = (
@@ -131,12 +175,57 @@ function App() {
   const [pendingPlaybackRequest, setPendingPlaybackRequest] = useState<PendingPlaybackRequest | null>(null)
   const [recentAutomationsVersion, setRecentAutomationsVersion] = useState(0)
   const [lastTerminalPlaybackKey, setLastTerminalPlaybackKey] = useState<string | null>(null)
+  const [pageAnalysisQuestion, setPageAnalysisQuestion] = useState('')
+  const [pageAnalysisVerbosity, setPageAnalysisVerbosity] =
+    useState<PageAnalysisVerbosity>(DEFAULT_PAGE_ANALYSIS_VERBOSITY)
+  const [pageAnalysisStatus, setPageAnalysisStatus] = useState<PageAnalysisStatusResult>(
+    DEFAULT_PAGE_ANALYSIS_STATUS
+  )
+  const [pageAnalysisCacheByTabId, setPageAnalysisCacheByTabId] =
+    useState<Record<string, PageAnalysisCacheEntry>>({})
+  const [pageAnalysisBusyState, setPageAnalysisBusyState] =
+    useState<'idle' | 'summarize' | 'ask' | 'refresh' | 'clear' | 'cancel'>('idle')
+  const [pageAnalysisStatusMessage, setPageAnalysisStatusMessage] = useState(
+    'Use AI summary or ask to analyze the active page.'
+  )
+  const [pageAnalysisStatusTone, setPageAnalysisStatusTone] =
+    useState<'neutral' | 'success' | 'error'>('neutral')
+  const [pageAnalysisLastRequest, setPageAnalysisLastRequest] = useState<{
+    mode: PageAnalysisMode
+    question?: string
+  } | null>(null)
+  const pageAnalysisQuestionInputRef = useRef<HTMLInputElement | null>(null)
 
   const activeTab = useMemo(() => {
     return tabs.find((tab) => tab.id === activeTabId) ?? null
   }, [activeTabId, tabs])
 
   const isHomeTab = activeTab?.url === HOME_STARTER_URL
+
+  const activePageAnalysisEntry = useMemo(() => {
+    if (!activeTabId) {
+      return null
+    }
+
+    return pageAnalysisCacheByTabId[activeTabId] ?? null
+  }, [activeTabId, pageAnalysisCacheByTabId])
+
+  const activePageAnalysisResult = activePageAnalysisEntry?.result ?? null
+
+  const activePageAnalysisSnapshot =
+    activePageAnalysisResult?.snapshot ??
+    (pageAnalysisStatus.tabId === activeTabId ? pageAnalysisStatus.snapshot : null)
+
+  const activePageAnalysisStale = useMemo(() => {
+    if (!activePageAnalysisSnapshot) {
+      return false
+    }
+
+    const staleByAge =
+      Date.now() - Date.parse(activePageAnalysisSnapshot.extractedAt) > activePageAnalysisSnapshot.ttlMs
+
+    return activePageAnalysisSnapshot.stale || staleByAge
+  }, [activePageAnalysisSnapshot])
 
   const sidebarBadges = useMemo(() => {
     const runningCount = historyEntries.filter((entry) => entry.status === 'running').length
@@ -145,9 +234,9 @@ function App() {
     return {
       library: libraryItems.length,
       history: runningCount + failedCount,
-      'ai-chat': aiStatusTone === 'error' ? 1 : 0
+      'ai-chat': aiStatusTone === 'error' || pageAnalysisStatusTone === 'error' ? 1 : 0
     } satisfies Partial<Record<AutomationSidebarSection, number>>
-  }, [aiStatusTone, historyEntries, libraryItems.length])
+  }, [aiStatusTone, historyEntries, libraryItems.length, pageAnalysisStatusTone])
 
   const persistSidebarPreferences = useCallback(
     (patch: Partial<AutomationSidebarPreferences>): void => {
@@ -253,6 +342,247 @@ function App() {
       setAiBusyState('idle')
     }
   }, [aiProvider])
+
+  const upsertPageAnalysisCache = useCallback(
+    (tabId: string, result: PageAnalysisResult): void => {
+      setPageAnalysisCacheByTabId((current) => ({
+        ...current,
+        [tabId]: {
+          result,
+          updatedAt: new Date().toISOString()
+        }
+      }))
+    },
+    []
+  )
+
+  const refreshPageAnalysisStatus = useCallback(async (): Promise<void> => {
+    const status = await window.pathfinder.pageAnalysisGetStatus(
+      activeTabId ? { tabId: activeTabId } : undefined
+    )
+    setPageAnalysisStatus(status)
+
+    const statusTabId = status.tabId
+    if (statusTabId && !status.hasContext) {
+      setPageAnalysisCacheByTabId((current) => {
+        if (!(statusTabId in current)) {
+          return current
+        }
+
+        const next = { ...current }
+        delete next[statusTabId]
+        return next
+      })
+    }
+  }, [activeTabId])
+
+  const focusAiSection = useCallback((): void => {
+    if (isOverlayMode) {
+      setIsOverlayOpen(true)
+    }
+
+    persistSidebarPreferences({
+      collapsed: false,
+      activeSection: 'ai-chat'
+    })
+  }, [isOverlayMode, persistSidebarPreferences])
+
+  const executePageAnalysis = useCallback(
+    async (mode: PageAnalysisMode, questionOverride?: string): Promise<void> => {
+      if (!activeTabId) {
+        throw new Error('No active tab available.')
+      }
+
+      focusAiSection()
+      const question = (questionOverride ?? pageAnalysisQuestion).trim()
+      if (mode === 'ask' && !question) {
+        setPageAnalysisStatusTone('error')
+        setPageAnalysisStatusMessage('Type a question before running Ask.')
+        pageAnalysisQuestionInputRef.current?.focus()
+        return
+      }
+
+      setPageAnalysisBusyState(mode)
+      setPageAnalysisStatusTone('neutral')
+      setPageAnalysisStatusMessage(
+        mode === 'summarize'
+          ? 'Analyzing active page and generating summary...'
+          : 'Analyzing active page and answering question...'
+      )
+
+      const requestBase = {
+        tabId: activeTabId,
+        verbosity: pageAnalysisVerbosity
+      }
+
+      try {
+        const result =
+          mode === 'summarize'
+            ? await window.pathfinder.pageAnalysisSummarize(requestBase)
+            : await window.pathfinder.pageAnalysisAsk({
+                ...requestBase,
+                question
+              })
+
+        if (result.ok) {
+          upsertPageAnalysisCache(activeTabId, result)
+          setPageAnalysisStatusTone('success')
+          setPageAnalysisStatusMessage(
+            mode === 'summarize'
+              ? 'Page summary updated with grounded citations.'
+              : 'Answer generated with grounded citations.'
+          )
+          setPageAnalysisLastRequest(mode === 'ask' ? { mode, question } : { mode })
+        } else {
+          upsertPageAnalysisCache(activeTabId, result)
+          setPageAnalysisStatusTone('error')
+          setPageAnalysisStatusMessage(result.error?.message ?? 'Page analysis failed.')
+          setPageAnalysisLastRequest(mode === 'ask' ? { mode, question } : { mode })
+        }
+      } catch (error) {
+        setPageAnalysisStatusTone('error')
+        setPageAnalysisStatusMessage(
+          error instanceof Error ? error.message : 'Page analysis failed.'
+        )
+      } finally {
+        setPageAnalysisBusyState('idle')
+        await refreshPageAnalysisStatus()
+      }
+    },
+    [
+      activeTabId,
+      focusAiSection,
+      pageAnalysisQuestion,
+      pageAnalysisVerbosity,
+      refreshPageAnalysisStatus,
+      upsertPageAnalysisCache
+    ]
+  )
+
+  const summarizeActivePage = useCallback(async (): Promise<void> => {
+    await executePageAnalysis('summarize')
+  }, [executePageAnalysis])
+
+  const askActivePage = useCallback(
+    async (questionOverride?: string): Promise<void> => {
+      await executePageAnalysis('ask', questionOverride)
+    },
+    [executePageAnalysis]
+  )
+
+  const refreshPageAnalysisContext = useCallback(async (): Promise<void> => {
+    if (!activeTabId) {
+      throw new Error('No active tab available.')
+    }
+
+    setPageAnalysisBusyState('refresh')
+    setPageAnalysisStatusTone('neutral')
+    setPageAnalysisStatusMessage('Refreshing page context...')
+
+    try {
+      const result = await window.pathfinder.pageAnalysisRefreshContext({ tabId: activeTabId })
+      if (!result.ok) {
+        setPageAnalysisStatusTone('error')
+        setPageAnalysisStatusMessage(result.error?.message ?? 'Unable to refresh page context.')
+      } else {
+        setPageAnalysisStatusTone('success')
+        setPageAnalysisStatusMessage('Page context refreshed.')
+      }
+    } finally {
+      setPageAnalysisBusyState('idle')
+      await refreshPageAnalysisStatus()
+    }
+  }, [activeTabId, refreshPageAnalysisStatus])
+
+  const clearPageAnalysisContext = useCallback(async (): Promise<void> => {
+    if (!activeTabId) {
+      throw new Error('No active tab available.')
+    }
+
+    setPageAnalysisBusyState('clear')
+
+    try {
+      await window.pathfinder.pageAnalysisClearContext({ tabId: activeTabId })
+      setPageAnalysisCacheByTabId((current) => {
+        if (!(activeTabId in current)) {
+          return current
+        }
+
+        const next = { ...current }
+        delete next[activeTabId]
+        return next
+      })
+      setPageAnalysisStatusTone('neutral')
+      setPageAnalysisStatusMessage('Page analysis context cleared for this tab.')
+    } finally {
+      setPageAnalysisBusyState('idle')
+      await refreshPageAnalysisStatus()
+    }
+  }, [activeTabId, refreshPageAnalysisStatus])
+
+  const cancelPageAnalysis = useCallback(async (): Promise<void> => {
+    setPageAnalysisBusyState('cancel')
+
+    try {
+      await window.pathfinder.pageAnalysisCancel(
+        pageAnalysisStatus.operationId ? { operationId: pageAnalysisStatus.operationId } : undefined
+      )
+      setPageAnalysisStatusTone('neutral')
+      setPageAnalysisStatusMessage('Cancellation requested for active analysis task.')
+    } finally {
+      setPageAnalysisBusyState('idle')
+      await refreshPageAnalysisStatus()
+    }
+  }, [pageAnalysisStatus.operationId, refreshPageAnalysisStatus])
+
+  const retryPageAnalysis = useCallback(async (): Promise<void> => {
+    if (!pageAnalysisLastRequest) {
+      setPageAnalysisStatusTone('error')
+      setPageAnalysisStatusMessage('No previous analysis request to retry.')
+      return
+    }
+
+    if (pageAnalysisLastRequest.mode === 'summarize') {
+      await summarizeActivePage()
+      return
+    }
+
+    await askActivePage(pageAnalysisLastRequest.question)
+  }, [askActivePage, pageAnalysisLastRequest, summarizeActivePage])
+
+  const handlePageAnalysisUserAction = useCallback(
+    async (action: PageAnalysisFailure['userAction']): Promise<void> => {
+      if (action === 'retry') {
+        await retryPageAnalysis()
+        return
+      }
+
+      if (action === 'refresh-context') {
+        await refreshPageAnalysisContext()
+        return
+      }
+
+      if (action === 'clear-context') {
+        await clearPageAnalysisContext()
+        return
+      }
+
+      if (action === 'check-llm-config') {
+        focusAiSection()
+        return
+      }
+
+      if (action === 'review-page-selection') {
+        pageAnalysisQuestionInputRef.current?.focus()
+      }
+    },
+    [
+      clearPageAnalysisContext,
+      focusAiSection,
+      refreshPageAnalysisContext,
+      retryPageAnalysis
+    ]
+  )
 
   const refreshLibrary = useCallback(async (): Promise<void> => {
     const result = await window.pathfinder.automationLibraryList({
@@ -385,6 +715,30 @@ function App() {
       unsubscribeDownloads()
     }
   }, [])
+
+  useEffect(() => {
+    setPageAnalysisCacheByTabId((current) => {
+      const tabUrlById = new Map(tabs.map((tab) => [tab.id, tab.url]))
+      let changed = false
+      const next = { ...current }
+
+      for (const [tabId, entry] of Object.entries(current)) {
+        const currentUrl = tabUrlById.get(tabId)
+        const snapshotUrl = entry.result.snapshot?.url
+
+        if (!currentUrl || (snapshotUrl && snapshotUrl !== currentUrl)) {
+          delete next[tabId]
+          changed = true
+        }
+      }
+
+      return changed ? next : current
+    })
+  }, [tabs])
+
+  useEffect(() => {
+    void refreshPageAnalysisStatus()
+  }, [activeTabId, refreshPageAnalysisStatus])
 
   useEffect(() => {
     let isMounted = true
@@ -791,6 +1145,39 @@ function App() {
     await openSidebarSectionFromCommand('ai-chat')
   }, [openSidebarSectionFromCommand])
 
+  const summarizeActivePageFromCommand = useCallback(async (): Promise<void> => {
+    await openSidebarSectionFromCommand('ai-chat')
+    await summarizeActivePage()
+  }, [openSidebarSectionFromCommand, summarizeActivePage])
+
+  const askActivePageFromCommand = useCallback(
+    async (input: string): Promise<void> => {
+      await openSidebarSectionFromCommand('ai-chat')
+      const inlineQuestion = input.trim()
+
+      if (!inlineQuestion) {
+        setPageAnalysisStatusTone('neutral')
+        setPageAnalysisStatusMessage('Type a question in the AI panel and run Ask.')
+        pageAnalysisQuestionInputRef.current?.focus()
+        return
+      }
+
+      setPageAnalysisQuestion(inlineQuestion)
+      await askActivePage(inlineQuestion)
+    },
+    [askActivePage, openSidebarSectionFromCommand]
+  )
+
+  const refreshPageContextFromCommand = useCallback(async (): Promise<void> => {
+    await openSidebarSectionFromCommand('ai-chat')
+    await refreshPageAnalysisContext()
+  }, [openSidebarSectionFromCommand, refreshPageAnalysisContext])
+
+  const clearPageContextFromCommand = useCallback(async (): Promise<void> => {
+    await openSidebarSectionFromCommand('ai-chat')
+    await clearPageAnalysisContext()
+  }, [clearPageAnalysisContext, openSidebarSectionFromCommand])
+
   const validateAiConfigFromCommand = useCallback(async (): Promise<void> => {
     await openSidebarSectionFromCommand('ai-chat')
     await validateLlmConfig()
@@ -846,6 +1233,10 @@ function App() {
     openSidebarLibrary: async () => openSidebarSectionFromCommand('library'),
     openSidebarHistory: async () => openSidebarSectionFromCommand('history'),
     openAiConfig: openAiConfigFromCommand,
+    summarizeActivePage: summarizeActivePageFromCommand,
+    askActivePage: askActivePageFromCommand,
+    refreshPageAnalysisContext: refreshPageContextFromCommand,
+    clearPageAnalysisContext: clearPageContextFromCommand,
     validateAiConfig: validateAiConfigFromCommand,
     activeTabId
   })
@@ -855,19 +1246,21 @@ function App() {
       void refreshRecorderStatus()
       void refreshPlaybackStatus()
       void refreshHistory()
+      void refreshPageAnalysisStatus()
     }, 0)
 
     const interval = window.setInterval(() => {
       void refreshRecorderStatus()
       void refreshPlaybackStatus()
       void refreshHistory()
+      void refreshPageAnalysisStatus()
     }, 1000)
 
     return () => {
       window.clearTimeout(initialRefreshTimer)
       window.clearInterval(interval)
     }
-  }, [refreshHistory, refreshPlaybackStatus, refreshRecorderStatus])
+  }, [refreshHistory, refreshPageAnalysisStatus, refreshPlaybackStatus, refreshRecorderStatus])
 
   const playbackIndicatorLabel = useMemo(() => {
     if (playbackStatus.state === 'running') {
@@ -1090,108 +1483,307 @@ function App() {
             />
           }
           aiContent={
-            <section className="automation-sidebar-ai-config" aria-label="AI provider configuration">
-              <header className="automation-sidebar-library__header">
-                <div className="automation-sidebar-library__actions">
+            <section className="automation-sidebar-ai-panel" aria-label="AI assistant">
+              <article className="automation-sidebar-ai-analysis">
+                <header className="automation-sidebar-ai-analysis__header">
+                  <h3>Page Analysis</h3>
+                  <p>Summarize or ask about the active tab with grounded citations.</p>
+                </header>
+
+                <div className="automation-sidebar-ai-analysis__quick-actions">
                   <button
                     type="button"
                     onClick={() => {
-                      void saveLlmConfig()
+                      void summarizeActivePage()
                     }}
-                    disabled={aiBusyState !== 'idle'}
+                    disabled={pageAnalysisBusyState !== 'idle'}
                   >
-                    {aiBusyState === 'saving' ? 'Saving...' : 'Save Settings'}
+                    {pageAnalysisBusyState === 'summarize' ? 'Summarizing...' : 'Summarize'}
                   </button>
                   <button
                     type="button"
                     onClick={() => {
-                      void validateLlmConfig()
+                      void askActivePage()
                     }}
-                    disabled={aiBusyState !== 'idle'}
+                    disabled={pageAnalysisBusyState !== 'idle'}
                   >
-                    {aiBusyState === 'validating' ? 'Validating...' : 'Validate Connection'}
+                    {pageAnalysisBusyState === 'ask' ? 'Asking...' : 'Ask'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      void cancelPageAnalysis()
+                    }}
+                    disabled={pageAnalysisStatus.state !== 'running' && pageAnalysisStatus.state !== 'cancelling'}
+                  >
+                    {pageAnalysisStatus.state === 'cancelling' ? 'Cancelling...' : 'Cancel'}
                   </button>
                 </div>
-              </header>
 
-              <div className="automation-sidebar-library__filters">
-                <label>
-                  <span>Provider</span>
-                  <select
-                    value={aiProvider}
-                    onChange={(event) => {
-                      const provider = event.target.value as LLMProviderId
-                      setAiProvider(provider)
-                      void window.pathfinder
-                        .llmSaveConfig({
-                          provider,
-                          secret: { mode: 'unchanged' }
-                        })
-                        .then((state) => {
-                          syncAiDraftFromState(state)
-                          setAiStatusTone('neutral')
-                          setAiStatusMessage(
-                            state.secretPresent
-                              ? `Loaded ${state.config.provider} settings.`
-                              : `Loaded ${state.config.provider} settings. No secret configured.`
-                          )
-                        })
-                        .catch(() => {
-                          setAiStatusTone('error')
-                          setAiStatusMessage('Unable to switch provider settings.')
-                        })
+                <label className="automation-sidebar-ai-analysis__question">
+                  <span>Ask About This Page</span>
+                  <input
+                    ref={pageAnalysisQuestionInputRef}
+                    type="text"
+                    value={pageAnalysisQuestion}
+                    onChange={(event) => setPageAnalysisQuestion(event.target.value)}
+                    placeholder="What are the key risks on this page?"
+                  />
+                </label>
+
+                <div className="automation-sidebar-ai-analysis__verbosity">
+                  <span>Verbosity</span>
+                  <div className="automation-sidebar-ai-analysis__verbosity-buttons">
+                    <button
+                      type="button"
+                      className={pageAnalysisVerbosity === 'concise' ? 'is-active' : ''}
+                      onClick={() => setPageAnalysisVerbosity('concise')}
+                    >
+                      Concise
+                    </button>
+                    <button
+                      type="button"
+                      className={pageAnalysisVerbosity === 'detailed' ? 'is-active' : ''}
+                      onClick={() => setPageAnalysisVerbosity('detailed')}
+                    >
+                      Detailed
+                    </button>
+                  </div>
+                </div>
+
+                <div className="automation-sidebar-ai-analysis__actions">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      void refreshPageAnalysisContext()
                     }}
+                    disabled={pageAnalysisBusyState !== 'idle'}
                   >
-                    <option value="openai">OpenAI (cloud)</option>
-                    <option value="ollama">Ollama (local)</option>
-                  </select>
-                </label>
-                <label>
-                  <span>Model</span>
-                  <input
-                    type="text"
-                    value={aiModel}
-                    onChange={(event) => setAiModel(event.target.value)}
-                    placeholder="gpt-4o-mini or llama3.2"
-                  />
-                </label>
-                <label>
-                  <span>Endpoint/Base URL (optional)</span>
-                  <input
-                    type="text"
-                    value={aiEndpoint}
-                    onChange={(event) => setAiEndpoint(event.target.value)}
-                    placeholder="http://127.0.0.1:11434"
-                  />
-                </label>
-                <label>
-                  <span>{aiProvider === 'openai' ? 'API Key' : 'Access Token (optional)'}</span>
-                  <input
-                    type="password"
-                    value={aiSecretDraft}
-                    onChange={(event) => setAiSecretDraft(event.target.value)}
-                    placeholder={
-                      aiProvider === 'openai'
-                        ? 'sk-...'
-                        : 'Optional bearer token for protected endpoint'
-                    }
-                    autoComplete="new-password"
-                  />
-                </label>
-              </div>
+                    {pageAnalysisBusyState === 'refresh' ? 'Refreshing...' : 'Refresh Context'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      void clearPageAnalysisContext()
+                    }}
+                    disabled={pageAnalysisBusyState !== 'idle'}
+                  >
+                    {pageAnalysisBusyState === 'clear' ? 'Clearing...' : 'Clear Context'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      void retryPageAnalysis()
+                    }}
+                    disabled={pageAnalysisBusyState !== 'idle' || !pageAnalysisLastRequest}
+                  >
+                    Retry
+                  </button>
+                </div>
 
-              <article className="automation-sidebar-empty-card automation-sidebar-ai-placeholder">
-                <h3>AI Adapter Status</h3>
-                <p>{aiStatusMessage}</p>
-                <p>
-                  Selected provider: <strong>{llmConfigState?.config.provider ?? aiProvider}</strong>
-                  {' · '}
-                  Secret configured: <strong>{llmConfigState?.secretPresent ? 'Yes' : 'No'}</strong>
+                <p
+                  className={`automation-sidebar-ai-status automation-sidebar-ai-status--${pageAnalysisStatusTone}`}
+                >
+                  {pageAnalysisStatusMessage}
                 </p>
-                <button type="button" disabled>
-                  Chat execution is not in phase 10
-                </button>
+
+                {activePageAnalysisSnapshot ? (
+                  <p className="automation-sidebar-ai-meta">
+                    Snapshot: {activePageAnalysisSnapshot.title || 'Untitled page'}
+                    {' · '}
+                    {new Date(activePageAnalysisSnapshot.extractedAt).toLocaleTimeString()}
+                    {' · '}
+                    TTL {Math.floor(activePageAnalysisSnapshot.ttlMs / 1000)}s
+                  </p>
+                ) : null}
+
+                {activePageAnalysisStale ? (
+                  <div className="automation-sidebar-ai-stale-warning">
+                    <p>Current snapshot may be stale. Refresh context before follow-up questions.</p>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        void refreshPageAnalysisContext()
+                      }}
+                      disabled={pageAnalysisBusyState !== 'idle'}
+                    >
+                      Re-extract Context
+                    </button>
+                  </div>
+                ) : null}
+
+                {activePageAnalysisResult ? (
+                  <article className="automation-sidebar-ai-result" aria-live="polite">
+                    <header className="automation-sidebar-ai-result__header">
+                      <h4>
+                        {activePageAnalysisResult.mode === 'summarize' ? 'Summary' : 'Answer'}
+                      </h4>
+                      <span
+                        className={`automation-sidebar-ai-confidence automation-sidebar-ai-confidence--${activePageAnalysisResult.confidence}`}
+                      >
+                        Confidence: {activePageAnalysisResult.confidence}
+                      </span>
+                    </header>
+
+                    <p className="automation-sidebar-ai-answer">{activePageAnalysisResult.answer}</p>
+
+                    {activePageAnalysisResult.sections.length > 0 ? (
+                      <div className="automation-sidebar-ai-sections">
+                        {activePageAnalysisResult.sections.map((section) => (
+                          <section key={section.title} className="automation-sidebar-ai-section">
+                            <h5>{section.title}</h5>
+                            <ul>
+                              {section.bullets.map((bullet, index) => (
+                                <li key={`${section.title}-${index}`}>{bullet}</li>
+                              ))}
+                            </ul>
+                          </section>
+                        ))}
+                      </div>
+                    ) : null}
+
+                    {activePageAnalysisResult.error ? (
+                      <div className="automation-sidebar-ai-error-panel">
+                        <p>{activePageAnalysisResult.error.message}</p>
+                        {activePageAnalysisResult.error.userAction !== 'none' ? (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              void handlePageAnalysisUserAction(activePageAnalysisResult.error?.userAction ?? 'none')
+                            }}
+                          >
+                            {getPageAnalysisUserActionLabel(activePageAnalysisResult.error.userAction)}
+                          </button>
+                        ) : null}
+                      </div>
+                    ) : null}
+
+                    {activePageAnalysisResult.citations.length > 0 ? (
+                      <ul className="automation-sidebar-ai-citations">
+                        {activePageAnalysisResult.citations.map((citation) => (
+                          <li key={citation.id} className="automation-sidebar-ai-citation-card">
+                            <p className="automation-sidebar-ai-citation-card__snippet">
+                              <span className="automation-sidebar-ai-citation-marker">[{citation.marker}]</span>
+                              {citation.snippet}
+                            </p>
+                            <p className="automation-sidebar-ai-citation-card__meta">
+                              <strong>{citation.source.title || 'Source'}</strong>
+                              {' · index '}
+                              {citation.snippetIndex + 1}
+                              {' · '}
+                              {new Date(citation.extractedAt).toLocaleTimeString()}
+                            </p>
+                            <p className="automation-sidebar-ai-citation-card__meta automation-sidebar-ai-citation-card__url">
+                              {citation.source.url}
+                            </p>
+                          </li>
+                        ))}
+                      </ul>
+                    ) : null}
+                  </article>
+                ) : null}
               </article>
+
+              <section className="automation-sidebar-ai-config" aria-label="AI provider configuration">
+                <header className="automation-sidebar-library__header">
+                  <div className="automation-sidebar-library__actions">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        void saveLlmConfig()
+                      }}
+                      disabled={aiBusyState !== 'idle'}
+                    >
+                      {aiBusyState === 'saving' ? 'Saving...' : 'Save Settings'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        void validateLlmConfig()
+                      }}
+                      disabled={aiBusyState !== 'idle'}
+                    >
+                      {aiBusyState === 'validating' ? 'Validating...' : 'Validate Connection'}
+                    </button>
+                  </div>
+                </header>
+
+                <div className="automation-sidebar-library__filters">
+                  <label>
+                    <span>Provider</span>
+                    <select
+                      value={aiProvider}
+                      onChange={(event) => {
+                        const provider = event.target.value as LLMProviderId
+                        setAiProvider(provider)
+                        void window.pathfinder
+                          .llmSaveConfig({
+                            provider,
+                            secret: { mode: 'unchanged' }
+                          })
+                          .then((state) => {
+                            syncAiDraftFromState(state)
+                            setAiStatusTone('neutral')
+                            setAiStatusMessage(
+                              state.secretPresent
+                                ? `Loaded ${state.config.provider} settings.`
+                                : `Loaded ${state.config.provider} settings. No secret configured.`
+                            )
+                          })
+                          .catch(() => {
+                            setAiStatusTone('error')
+                            setAiStatusMessage('Unable to switch provider settings.')
+                          })
+                      }}
+                    >
+                      <option value="openai">OpenAI (cloud)</option>
+                      <option value="ollama">Ollama (local)</option>
+                    </select>
+                  </label>
+                  <label>
+                    <span>Model</span>
+                    <input
+                      type="text"
+                      value={aiModel}
+                      onChange={(event) => setAiModel(event.target.value)}
+                      placeholder="gpt-4o-mini or llama3.2"
+                    />
+                  </label>
+                  <label>
+                    <span>Endpoint/Base URL (optional)</span>
+                    <input
+                      type="text"
+                      value={aiEndpoint}
+                      onChange={(event) => setAiEndpoint(event.target.value)}
+                      placeholder="http://127.0.0.1:11434"
+                    />
+                  </label>
+                  <label>
+                    <span>{aiProvider === 'openai' ? 'API Key' : 'Access Token (optional)'}</span>
+                    <input
+                      type="password"
+                      value={aiSecretDraft}
+                      onChange={(event) => setAiSecretDraft(event.target.value)}
+                      placeholder={
+                        aiProvider === 'openai'
+                          ? 'sk-...'
+                          : 'Optional bearer token for protected endpoint'
+                      }
+                      autoComplete="new-password"
+                    />
+                  </label>
+                </div>
+
+                <article className="automation-sidebar-empty-card automation-sidebar-ai-placeholder">
+                  <h3>AI Adapter Status</h3>
+                  <p>{aiStatusMessage}</p>
+                  <p>
+                    Selected provider: <strong>{llmConfigState?.config.provider ?? aiProvider}</strong>
+                    {' · '}
+                    Secret configured: <strong>{llmConfigState?.secretPresent ? 'Yes' : 'No'}</strong>
+                  </p>
+                </article>
+              </section>
             </section>
           }
         />

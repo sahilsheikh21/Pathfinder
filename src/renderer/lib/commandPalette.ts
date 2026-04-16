@@ -32,6 +32,10 @@ export interface BrowserCommandDeps {
   openSidebarLibrary?: () => Promise<void>
   openSidebarHistory?: () => Promise<void>
   openAiConfig?: () => Promise<void>
+  summarizeActivePage?: () => Promise<void>
+  askActivePage?: (input: string) => Promise<void>
+  refreshPageAnalysisContext?: () => Promise<void>
+  clearPageAnalysisContext?: () => Promise<void>
   validateAiConfig?: () => Promise<void>
   activeTabId: string | null
 }
@@ -275,6 +279,63 @@ export const createBrowserCommands = (deps: BrowserCommandDeps): CommandPaletteC
         }
 
         await deps.openAiConfig()
+      }
+    },
+    {
+      id: 'ai.analysis.summarize',
+      title: 'AI: Summarize Active Page',
+      description: 'Summarize active page content with grounded citation snippets.',
+      keywords: ['ai', 'summary', 'summarize', 'page', 'analysis'],
+      run: async () => {
+        if (!deps.summarizeActivePage) {
+          throw new Error('AI page summary is unavailable.')
+        }
+
+        requireActiveTabId(deps.activeTabId)
+        await deps.summarizeActivePage()
+      }
+    },
+    {
+      id: 'ai.analysis.ask',
+      title: 'AI: Ask About Active Page',
+      description: 'Ask a question about the active page with grounded citations.',
+      argumentHint: '[question]',
+      keywords: ['ai', 'ask', 'question', 'page', 'analysis'],
+      run: async (input: string) => {
+        if (!deps.askActivePage) {
+          throw new Error('AI page Q&A is unavailable.')
+        }
+
+        requireActiveTabId(deps.activeTabId)
+        await deps.askActivePage(input)
+      }
+    },
+    {
+      id: 'ai.analysis.refresh',
+      title: 'AI: Refresh Page Context',
+      description: 'Re-extract active page context for follow-up analysis.',
+      keywords: ['ai', 'refresh', 'context', 'page', 'analysis'],
+      run: async () => {
+        if (!deps.refreshPageAnalysisContext) {
+          throw new Error('AI context refresh is unavailable.')
+        }
+
+        requireActiveTabId(deps.activeTabId)
+        await deps.refreshPageAnalysisContext()
+      }
+    },
+    {
+      id: 'ai.analysis.clear',
+      title: 'AI: Clear Analysis Context',
+      description: 'Clear active-tab AI analysis context and cached result state.',
+      keywords: ['ai', 'clear', 'context', 'reset', 'analysis'],
+      run: async () => {
+        if (!deps.clearPageAnalysisContext) {
+          throw new Error('AI context clear is unavailable.')
+        }
+
+        requireActiveTabId(deps.activeTabId)
+        await deps.clearPageAnalysisContext()
       }
     },
     {
