@@ -37,6 +37,8 @@ export interface BrowserCommandDeps {
   refreshPageAnalysisContext?: () => Promise<void>
   clearPageAnalysisContext?: () => Promise<void>
   validateAiConfig?: () => Promise<void>
+  generateAutomationFromAi?: (input: string) => Promise<void>
+  cancelAutomationGeneration?: () => Promise<void>
   activeTabId: string | null
 }
 
@@ -279,6 +281,33 @@ export const createBrowserCommands = (deps: BrowserCommandDeps): CommandPaletteC
         }
 
         await deps.openAiConfig()
+      }
+    },
+    {
+      id: 'ai.automation.generate',
+      title: 'AI: Generate Automation Draft',
+      description: 'Generate an automation draft from a natural-language prompt.',
+      argumentHint: '[prompt]',
+      keywords: ['ai', 'automation', 'generate', 'draft', 'workflow'],
+      run: async (input: string) => {
+        if (!deps.generateAutomationFromAi) {
+          throw new Error('AI automation generation is unavailable.')
+        }
+
+        await deps.generateAutomationFromAi(input)
+      }
+    },
+    {
+      id: 'ai.automation.cancel',
+      title: 'AI: Cancel Automation Generation',
+      description: 'Cancel the active AI automation generation request.',
+      keywords: ['ai', 'automation', 'cancel', 'stop', 'generation'],
+      run: async () => {
+        if (!deps.cancelAutomationGeneration) {
+          throw new Error('AI automation cancellation is unavailable.')
+        }
+
+        await deps.cancelAutomationGeneration()
       }
     },
     {
