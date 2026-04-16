@@ -1156,9 +1156,7 @@ function App() {
       const inlineQuestion = input.trim()
 
       if (!inlineQuestion) {
-        setPageAnalysisStatusTone('neutral')
-        setPageAnalysisStatusMessage('Type a question in the AI panel and run Ask.')
-        pageAnalysisQuestionInputRef.current?.focus()
+        await askActivePage()
         return
       }
 
