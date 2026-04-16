@@ -502,6 +502,16 @@ input {
   cursor: not-allowed;
 }
 
+.automation-sidebar-ai-generation__approval-button--draft {
+  border-color: color-mix(in srgb, #0a84ff 50%, var(--pf-border-subtle));
+  background: color-mix(in srgb, #0a84ff 12%, var(--pf-bg-elevated));
+}
+
+.automation-sidebar-ai-generation__approval-button--run {
+  border-color: color-mix(in srgb, #3e9d6f 50%, var(--pf-border-subtle));
+  background: color-mix(in srgb, #3e9d6f 12%, var(--pf-bg-elevated));
+}
+
 .automation-sidebar-ai-generation__status {
   margin: 0;
   padding: var(--pf-space-8) var(--pf-space-10);

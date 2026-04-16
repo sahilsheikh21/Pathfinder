@@ -574,6 +574,15 @@ function App() {
       } else {
         setAiAutomationStatusMessage(status.error.message)
       }
+      return
+    }
+
+    if (status.state === 'generating') {
+      setAiAutomationStatusMessage('Generating workflow draft...')
+    } else if (status.state === 'validating') {
+      setAiAutomationStatusMessage('Validating generated workflow draft...')
+    } else if (status.state === 'ready' && status.hasDraft) {
+      setAiAutomationStatusMessage('Draft ready. Review and approve before saving or running.')
     }
   }, [])
 
@@ -2394,6 +2403,7 @@ function App() {
                       <div className="automation-sidebar-ai-generation__approval-actions">
                         <button
                           type="button"
+                          className="automation-sidebar-ai-generation__approval-button--draft"
                           onClick={() => {
                             void saveGeneratedDraft(false)
                           }}
@@ -2403,6 +2413,7 @@ function App() {
                         </button>
                         <button
                           type="button"
+                          className="automation-sidebar-ai-generation__approval-button--run"
                           onClick={() => {
                             void saveGeneratedDraft(true)
                           }}
