@@ -21,7 +21,7 @@ const SECTION_ORDER: AutomationSidebarSection[] = ['library', 'history', 'ai-cha
 const SECTION_LABELS: Record<AutomationSidebarSection, string> = {
   library: 'Saved Automations',
   history: 'History',
-  'ai-chat': 'AI Assistant'
+  'ai-chat': 'AI Assistant & Generation'
 }
 
 const SECTION_ICONS: Record<AutomationSidebarSection, string> = {

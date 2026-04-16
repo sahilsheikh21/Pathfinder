@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
+  type AIAutomationGenerationState,
   type AutomationHistoryEntry,
   type AutomationHistoryListRequest,
   type AutomationLibraryItem,
@@ -18,10 +19,14 @@ import {
   type PageAnalysisVerbosity,
   type LLMProviderId,
   HOME_STARTER_URL,
+  type RecorderInputValue,
+  type RecorderWorkflowDocument,
+  type RecorderWorkflowStep,
   type RecorderStartRequest,
   type RecorderStatus,
   type BrowserTabState,
-  type DownloadState
+  type DownloadState,
+  type WorkflowVariableDefinition
 } from '../shared/browser'
 import AutomationSidebar from './components/AutomationSidebar'
 import AutomationSidebarHistory from './components/AutomationSidebarHistory'
@@ -92,6 +97,136 @@ const DEFAULT_PAGE_ANALYSIS_STATUS: PageAnalysisStatusResult = {
 }
 
 const DEFAULT_PAGE_ANALYSIS_VERBOSITY: PageAnalysisVerbosity = 'concise'
+
+const AI_AUTOMATION_ALLOWED_ACTIONS = new Set<RecorderWorkflowStep['action']>([
+  'navigate',
+  'click',
+  'type',
+  'wait'
+])
+
+interface AIAutomationConstraintDraft {
+  targetUrl: string
+  objective: string
+  variables: string
+  notes: string
+}
+
+const DEFAULT_AI_AUTOMATION_CONSTRAINTS: AIAutomationConstraintDraft = {
+  targetUrl: '',
+  objective: '',
+  variables: '',
+  notes: ''
+}
+
+const toDraftInputValueString = (value: RecorderInputValue): string => {
+  if (typeof value === 'string') {
+    return value
+  }
+
+  return `{{${value.name}}}`
+}
+
+const toDraftInputValue = (raw: string): RecorderInputValue => {
+  const trimmed = raw.trim()
+  const variableMatch = trimmed.match(/^\{\{([a-zA-Z0-9_-]+)\}\}$/)
+  if (!variableMatch) {
+    return raw
+  }
+
+  const variableName = variableMatch[1]
+  if (!variableName) {
+    return raw
+  }
+
+  return {
+    kind: 'variable',
+    name: variableName,
+    secret: true
+  }
+}
+
+const parseVariableDefinitions = (value: string): Record<string, WorkflowVariableDefinition> | undefined => {
+  const lines = value
+    .split(/[\n,]/)
+    .map((entry) => entry.trim())
+    .filter((entry) => entry.length > 0)
+
+  if (lines.length === 0) {
+    return undefined
+  }
+
+  const variables: Record<string, WorkflowVariableDefinition> = {}
+
+  for (const line of lines) {
+    const [namePart, promptPart] = line.split(':').map((part) => part.trim())
+    if (!namePart) {
+      continue
+    }
+
+    const isSecret = /secret|password|token|key/i.test(namePart)
+    variables[namePart] = {
+      type: isSecret ? 'secret' : 'text',
+      prompt: promptPart || `Provide value for ${namePart}`
+    }
+  }
+
+  return Object.keys(variables).length > 0 ? variables : undefined
+}
+
+const validateGeneratedDraft = (draft: RecorderWorkflowDocument): string[] => {
+  const errors: string[] = []
+
+  if (draft.version !== 1) {
+    errors.push('Workflow version must be 1.')
+  }
+
+  if (!Array.isArray(draft.steps) || draft.steps.length === 0) {
+    errors.push('Generated workflow must include at least one step.')
+    return errors
+  }
+
+  let lastSeq = 0
+  for (const step of draft.steps) {
+    if (!AI_AUTOMATION_ALLOWED_ACTIONS.has(step.action)) {
+      errors.push(`Unsupported action: ${step.action}.`)
+      continue
+    }
+
+    if (!Number.isFinite(step.seq) || step.seq <= lastSeq) {
+      errors.push('Step sequence must be strict ascending.')
+    }
+
+    lastSeq = step.seq
+
+    if (step.action === 'navigate' && (!step.url || !step.url.trim())) {
+      errors.push('Navigate steps require a URL.')
+    }
+
+    if ((step.action === 'click' || step.action === 'type') && (!step.selector || !step.selector.trim())) {
+      errors.push(`${step.action} steps require a selector.`)
+    }
+
+    if (step.action === 'type') {
+      const value = toDraftInputValueString(step.value)
+      if (!value.trim()) {
+        errors.push('Type steps require a non-empty value.')
+      }
+    }
+
+    if (step.action === 'wait') {
+      if (step.waitFor !== 'navigation' && step.waitFor !== 'selector') {
+        errors.push('Wait steps require waitFor to be navigation or selector.')
+      }
+
+      if (step.waitFor === 'selector' && (!step.selector || !step.selector.trim())) {
+        errors.push('Wait selector steps require a selector.')
+      }
+    }
+  }
+
+  return errors
+}
 
 interface PageAnalysisCacheEntry {
   result: PageAnalysisResult
@@ -194,7 +329,25 @@ function App() {
     mode: PageAnalysisMode
     question?: string
   } | null>(null)
+  const [aiAutomationPrompt, setAiAutomationPrompt] = useState('')
+  const [aiAutomationConstraints, setAiAutomationConstraints] =
+    useState<AIAutomationConstraintDraft>(DEFAULT_AI_AUTOMATION_CONSTRAINTS)
+  const [aiAutomationState, setAiAutomationState] = useState<AIAutomationGenerationState>('idle')
+  const [aiAutomationOperationId, setAiAutomationOperationId] = useState<string | null>(null)
+  const [aiAutomationDraft, setAiAutomationDraft] = useState<RecorderWorkflowDocument | null>(null)
+  const [aiAutomationWarnings, setAiAutomationWarnings] = useState<string[]>([])
+  const [aiAutomationError, setAiAutomationError] = useState('')
+  const [aiAutomationStatusMessage, setAiAutomationStatusMessage] = useState(
+    'Generate a workflow draft from a natural-language prompt.'
+  )
+  const [aiAutomationShowJson, setAiAutomationShowJson] = useState(false)
+  const [aiAutomationJsonDraft, setAiAutomationJsonDraft] = useState('')
+  const [aiAutomationJsonError, setAiAutomationJsonError] = useState('')
+  const [aiAutomationValidationErrors, setAiAutomationValidationErrors] = useState<string[]>([])
+  const [aiAutomationBusyState, setAiAutomationBusyState] =
+    useState<'idle' | 'generating' | 'saving' | 'save-and-run' | 'cancelling'>('idle')
   const pageAnalysisQuestionInputRef = useRef<HTMLInputElement | null>(null)
+  const aiAutomationPromptInputRef = useRef<HTMLInputElement | null>(null)
 
   const activeTab = useMemo(() => {
     return tabs.find((tab) => tab.id === activeTabId) ?? null
@@ -386,6 +539,307 @@ function App() {
       activeSection: 'ai-chat'
     })
   }, [isOverlayMode, persistSidebarPreferences])
+
+  const buildAutomationGenerateRequestConstraints = useCallback(() => {
+    const variableHints = aiAutomationConstraints.variables
+      .split(/[\n,]/)
+      .map((entry) => entry.trim())
+      .filter((entry) => entry.length > 0)
+
+    const constraints = {
+      ...(aiAutomationConstraints.targetUrl.trim()
+        ? { targetUrl: aiAutomationConstraints.targetUrl.trim() }
+        : {}),
+      ...(aiAutomationConstraints.objective.trim()
+        ? { objective: aiAutomationConstraints.objective.trim() }
+        : {}),
+      ...(variableHints.length > 0 ? { variables: variableHints } : {}),
+      ...(aiAutomationConstraints.notes.trim()
+        ? { notes: aiAutomationConstraints.notes.trim() }
+        : {})
+    }
+
+    return Object.keys(constraints).length > 0 ? constraints : undefined
+  }, [aiAutomationConstraints])
+
+  const refreshAutomationGenerationStatus = useCallback(async (): Promise<void> => {
+    const status = await window.pathfinder.aiAutomationGetStatus()
+    setAiAutomationState(status.state)
+    setAiAutomationOperationId(status.operationId)
+
+    if (status.error) {
+      setAiAutomationError(status.error.message)
+      if (status.state === 'cancelled') {
+        setAiAutomationStatusMessage('Generation cancelled. You can retry with the same prompt.')
+      } else {
+        setAiAutomationStatusMessage(status.error.message)
+      }
+    }
+  }, [])
+
+  const requestAutomationGeneration = useCallback(
+    async (promptOverride?: string): Promise<void> => {
+      const prompt = (promptOverride ?? aiAutomationPrompt).trim()
+      if (!prompt) {
+        setAiAutomationError('Provide a prompt to generate an automation draft.')
+        setAiAutomationStatusMessage('Prompt required before generation can start.')
+        setAiAutomationState('failed')
+        aiAutomationPromptInputRef.current?.focus()
+        throw new Error('Provide a prompt for AI automation generation.')
+      }
+
+      if (promptOverride?.trim()) {
+        setAiAutomationPrompt(promptOverride.trim())
+      }
+
+      setAiAutomationBusyState('generating')
+      setAiAutomationError('')
+      setAiAutomationValidationErrors([])
+      setAiAutomationStatusMessage('Generating workflow draft...')
+      setAiAutomationState('generating')
+
+      try {
+        const constraints = buildAutomationGenerateRequestConstraints()
+        const result = await window.pathfinder.aiAutomationGenerate({
+          prompt,
+          ...(constraints ? { constraints } : {}),
+          ...(activeTabId ? { tabId: activeTabId } : {})
+        })
+
+        setAiAutomationOperationId(result.operationId)
+        setAiAutomationState(result.state)
+
+        if (!result.ok || !result.draft) {
+          const message = result.error?.message ?? 'Automation draft generation failed.'
+          setAiAutomationError(message)
+          setAiAutomationStatusMessage(message)
+          setAiAutomationDraft(null)
+          setAiAutomationWarnings([])
+          return
+        }
+
+        setAiAutomationDraft(result.draft.workflow)
+        setAiAutomationWarnings(result.draft.warnings)
+        setAiAutomationJsonDraft(JSON.stringify(result.draft.workflow, null, 2))
+        setAiAutomationJsonError('')
+        setAiAutomationShowJson(false)
+        setAiAutomationError('')
+        setAiAutomationStatusMessage('Draft ready. Review and approve before saving or running.')
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'Automation draft generation failed.'
+        setAiAutomationError(message)
+        setAiAutomationState('failed')
+        setAiAutomationStatusMessage(message)
+      } finally {
+        setAiAutomationBusyState('idle')
+      }
+    },
+    [
+      activeTabId,
+      aiAutomationPrompt,
+      buildAutomationGenerateRequestConstraints
+    ]
+  )
+
+  const cancelAutomationGeneration = useCallback(async (): Promise<void> => {
+    setAiAutomationBusyState('cancelling')
+
+    try {
+      const result = await window.pathfinder.aiAutomationCancel(
+        aiAutomationOperationId ? { operationId: aiAutomationOperationId } : undefined
+      )
+
+      setAiAutomationState(result.state)
+      setAiAutomationOperationId(result.operationId)
+
+      if (result.ok) {
+        setAiAutomationError('')
+        setAiAutomationStatusMessage('Generation cancelled. Prompt and constraints were preserved for retry.')
+        return
+      }
+
+      setAiAutomationStatusMessage('No active generation request was running.')
+    } finally {
+      setAiAutomationBusyState('idle')
+      await refreshAutomationGenerationStatus()
+    }
+  }, [aiAutomationOperationId, refreshAutomationGenerationStatus])
+
+  const applyDraftJson = useCallback((): void => {
+    if (!aiAutomationJsonDraft.trim()) {
+      setAiAutomationJsonError('JSON draft cannot be empty.')
+      return
+    }
+
+    try {
+      const parsed = JSON.parse(aiAutomationJsonDraft) as RecorderWorkflowDocument
+      const validationErrors = validateGeneratedDraft(parsed)
+      if (validationErrors.length > 0) {
+        setAiAutomationJsonError(validationErrors[0] ?? 'Invalid workflow JSON.')
+        setAiAutomationValidationErrors(validationErrors)
+        return
+      }
+
+      setAiAutomationDraft(parsed)
+      setAiAutomationValidationErrors([])
+      setAiAutomationJsonError('')
+      setAiAutomationStatusMessage('Draft JSON applied. Re-validate with Save actions when ready.')
+    } catch (error) {
+      setAiAutomationJsonError(error instanceof Error ? error.message : 'Invalid JSON.')
+    }
+  }, [aiAutomationJsonDraft])
+
+  const updateDraftStep = useCallback(
+    (index: number, updater: (step: RecorderWorkflowStep) => RecorderWorkflowStep): void => {
+      setAiAutomationDraft((current) => {
+        if (!current) {
+          return current
+        }
+
+        const nextSteps = [...current.steps]
+        const currentStep = nextSteps[index]
+        if (!currentStep) {
+          return current
+        }
+
+        nextSteps[index] = updater(currentStep)
+
+        const nextDraft = {
+          ...current,
+          steps: nextSteps,
+          updatedAt: new Date().toISOString()
+        }
+
+        setAiAutomationJsonDraft(JSON.stringify(nextDraft, null, 2))
+        return nextDraft
+      })
+      setAiAutomationValidationErrors([])
+      setAiAutomationJsonError('')
+    },
+    []
+  )
+
+  const normalizeDraftForSave = useCallback(
+    (draft: RecorderWorkflowDocument): RecorderWorkflowDocument => {
+      const mergedVariables = {
+        ...(draft.variables ?? {}),
+        ...(parseVariableDefinitions(aiAutomationConstraints.variables) ?? {})
+      }
+
+      return {
+        ...draft,
+        name: draft.name.trim() || `AI Draft ${new Date().toLocaleString()}`,
+        updatedAt: new Date().toISOString(),
+        ...(Object.keys(mergedVariables).length > 0 ? { variables: mergedVariables } : {}),
+        metadata: {
+          ...(draft.metadata ?? {}),
+          generatedBy: 'ai-automation-generation',
+          sourcePrompt: aiAutomationPrompt,
+          ...(aiAutomationConstraints.targetUrl.trim()
+            ? { targetUrl: aiAutomationConstraints.targetUrl.trim() }
+            : {}),
+          ...(aiAutomationConstraints.objective.trim()
+            ? { objective: aiAutomationConstraints.objective.trim() }
+            : {})
+        }
+      }
+    },
+    [
+      aiAutomationConstraints.objective,
+      aiAutomationConstraints.targetUrl,
+      aiAutomationConstraints.variables,
+      aiAutomationPrompt
+    ]
+  )
+
+  const saveGeneratedDraft = useCallback(
+    async (runAfterSave: boolean): Promise<void> => {
+      if (!aiAutomationDraft) {
+        setAiAutomationStatusMessage('No generated draft is available to save.')
+        setAiAutomationState('failed')
+        return
+      }
+
+      const normalized = normalizeDraftForSave(aiAutomationDraft)
+      const validationErrors = validateGeneratedDraft(normalized)
+      setAiAutomationValidationErrors(validationErrors)
+      if (validationErrors.length > 0) {
+        setAiAutomationState('failed')
+        setAiAutomationStatusMessage('Draft validation failed. Fix highlighted issues before approval.')
+        return
+      }
+
+      setAiAutomationBusyState(runAfterSave ? 'save-and-run' : 'saving')
+      setAiAutomationStatusMessage(runAfterSave ? 'Saving draft and starting run...' : 'Saving draft...')
+
+      try {
+        const upsertResult = await window.pathfinder.automationLibraryUpsert({
+          item: {
+            id: normalized.id,
+            name: normalized.name,
+            ...(normalized.description ? { description: normalized.description } : {}),
+            tags: ['ai-generated'],
+            workflowDocument: normalized,
+            origin: 'imported'
+          }
+        })
+
+        setLibraryItems(upsertResult.items)
+        setRecentAutomationsVersion((current) => current + 1)
+
+        if (!runAfterSave) {
+          setAiAutomationState('ready')
+          setAiAutomationStatusMessage('Draft saved to the automation library.')
+          return
+        }
+
+        const savedId = upsertResult.item?.id ?? normalized.id
+        const runResult = await window.pathfinder.automationLibraryRun({
+          id: savedId,
+          sourceLabel: 'sidebar',
+          ...(activeTabId ? { tabId: activeTabId } : {})
+        })
+
+        if (!runResult.ok) {
+          if (runResult.reason === 'missing-variables' && runResult.requiredVariables?.length) {
+            throw new Error(
+              'Saved draft requires variables before run. Use Run from library to provide inputs.'
+            )
+          }
+
+          throw new Error(getPlaybackFailureMessage(runResult))
+        }
+
+        setRecentAutomationsVersion((current) => current + 1)
+        setAiAutomationStatusMessage('Draft saved and playback started.')
+      } catch (error) {
+        setAiAutomationState('failed')
+        setAiAutomationStatusMessage(
+          error instanceof Error ? error.message : 'Unable to save or run generated draft.'
+        )
+      } finally {
+        setAiAutomationBusyState('idle')
+      }
+    },
+    [
+      activeTabId,
+      aiAutomationDraft,
+      normalizeDraftForSave
+    ]
+  )
+
+  const discardGeneratedDraft = useCallback((): void => {
+    setAiAutomationDraft(null)
+    setAiAutomationWarnings([])
+    setAiAutomationValidationErrors([])
+    setAiAutomationJsonError('')
+    setAiAutomationJsonDraft('')
+    setAiAutomationShowJson(false)
+    setAiAutomationState('idle')
+    setAiAutomationOperationId(null)
+    setAiAutomationError('')
+    setAiAutomationStatusMessage('Draft discarded. Prompt and constraints are still available for retry.')
+  }, [])
 
   const executePageAnalysis = useCallback(
     async (mode: PageAnalysisMode, questionOverride?: string): Promise<void> => {
@@ -1203,6 +1657,37 @@ function App() {
     await validateLlmConfig()
   }, [openSidebarSectionFromCommand, validateLlmConfig])
 
+  const generateAutomationFromCommand = useCallback(
+    async (input: string): Promise<void> => {
+      await openSidebarSectionFromCommand('ai-chat')
+
+      const inlinePrompt = input.trim()
+      const fallbackPrompt = aiAutomationPrompt.trim()
+      const promptToUse = inlinePrompt || fallbackPrompt
+
+      if (!promptToUse) {
+        aiAutomationPromptInputRef.current?.focus()
+        throw new Error('Provide a prompt inline or in the AI panel before generating.')
+      }
+
+      if (inlinePrompt) {
+        setAiAutomationPrompt(inlinePrompt)
+      }
+
+      await requestAutomationGeneration(promptToUse)
+    },
+    [
+      aiAutomationPrompt,
+      openSidebarSectionFromCommand,
+      requestAutomationGeneration
+    ]
+  )
+
+  const cancelAutomationGenerationFromCommand = useCallback(async (): Promise<void> => {
+    await openSidebarSectionFromCommand('ai-chat')
+    await cancelAutomationGeneration()
+  }, [cancelAutomationGeneration, openSidebarSectionFromCommand])
+
   const runRecentAutomation = useCallback(
     async (preview: { id: string; canRun?: boolean; name: string }): Promise<void> => {
       if (!preview.canRun) {
@@ -1258,6 +1743,8 @@ function App() {
     refreshPageAnalysisContext: refreshPageContextFromCommand,
     clearPageAnalysisContext: clearPageContextFromCommand,
     validateAiConfig: validateAiConfigFromCommand,
+    generateAutomationFromAi: generateAutomationFromCommand,
+    cancelAutomationGeneration: cancelAutomationGenerationFromCommand,
     activeTabId
   })
 
@@ -1267,6 +1754,7 @@ function App() {
       void refreshPlaybackStatus()
       void refreshHistory()
       void refreshPageAnalysisStatus()
+      void refreshAutomationGenerationStatus()
     }, 0)
 
     const interval = window.setInterval(() => {
@@ -1274,13 +1762,20 @@ function App() {
       void refreshPlaybackStatus()
       void refreshHistory()
       void refreshPageAnalysisStatus()
+      void refreshAutomationGenerationStatus()
     }, 1000)
 
     return () => {
       window.clearTimeout(initialRefreshTimer)
       window.clearInterval(interval)
     }
-  }, [refreshHistory, refreshPageAnalysisStatus, refreshPlaybackStatus, refreshRecorderStatus])
+  }, [
+    refreshAutomationGenerationStatus,
+    refreshHistory,
+    refreshPageAnalysisStatus,
+    refreshPlaybackStatus,
+    refreshRecorderStatus
+  ])
 
   const playbackIndicatorLabel = useMemo(() => {
     if (playbackStatus.state === 'running') {
@@ -1505,6 +2000,429 @@ function App() {
           aiContent={
             <section className="automation-sidebar-ai-panel" aria-label="AI assistant">
               <article className="automation-sidebar-ai-analysis">
+                <section className="automation-sidebar-ai-generation" aria-label="AI automation generation">
+                  <header className="automation-sidebar-ai-generation__header">
+                    <h3>Automation Generation</h3>
+                    <p>Generate one workflow draft, review it, then explicitly approve save or run.</p>
+                  </header>
+
+                  <label className="automation-sidebar-ai-generation__field">
+                    <span>Prompt</span>
+                    <input
+                      ref={aiAutomationPromptInputRef}
+                      type="text"
+                      value={aiAutomationPrompt}
+                      onChange={(event) => setAiAutomationPrompt(event.target.value)}
+                      placeholder="Create a login workflow for this site"
+                    />
+                  </label>
+
+                  <div className="automation-sidebar-ai-generation__constraints">
+                    <label className="automation-sidebar-ai-generation__field">
+                      <span>Target URL (optional)</span>
+                      <input
+                        type="text"
+                        value={aiAutomationConstraints.targetUrl}
+                        onChange={(event) =>
+                          setAiAutomationConstraints((current) => ({
+                            ...current,
+                            targetUrl: event.target.value
+                          }))
+                        }
+                        placeholder="https://example.com/login"
+                      />
+                    </label>
+                    <label className="automation-sidebar-ai-generation__field">
+                      <span>Objective (optional)</span>
+                      <input
+                        type="text"
+                        value={aiAutomationConstraints.objective}
+                        onChange={(event) =>
+                          setAiAutomationConstraints((current) => ({
+                            ...current,
+                            objective: event.target.value
+                          }))
+                        }
+                        placeholder="Log in and open dashboard"
+                      />
+                    </label>
+                    <label className="automation-sidebar-ai-generation__field">
+                      <span>Variables (optional)</span>
+                      <input
+                        type="text"
+                        value={aiAutomationConstraints.variables}
+                        onChange={(event) =>
+                          setAiAutomationConstraints((current) => ({
+                            ...current,
+                            variables: event.target.value
+                          }))
+                        }
+                        placeholder="username, password:Account password"
+                      />
+                    </label>
+                    <label className="automation-sidebar-ai-generation__field">
+                      <span>Notes (optional)</span>
+                      <input
+                        type="text"
+                        value={aiAutomationConstraints.notes}
+                        onChange={(event) =>
+                          setAiAutomationConstraints((current) => ({
+                            ...current,
+                            notes: event.target.value
+                          }))
+                        }
+                        placeholder="Use stable selectors when possible"
+                      />
+                    </label>
+                  </div>
+
+                  <div className="automation-sidebar-ai-generation__actions">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        void requestAutomationGeneration()
+                      }}
+                      disabled={aiAutomationBusyState !== 'idle'}
+                    >
+                      {aiAutomationBusyState === 'generating' ? 'Generating...' : 'Generate'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        void cancelAutomationGeneration()
+                      }}
+                      disabled={
+                        aiAutomationBusyState !== 'idle' ||
+                        (aiAutomationState !== 'generating' && aiAutomationState !== 'validating')
+                      }
+                    >
+                      {aiAutomationBusyState === 'cancelling' ? 'Cancelling...' : 'Cancel'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setAiAutomationState('idle')
+                        setAiAutomationError('')
+                        setAiAutomationStatusMessage('Ready to generate a new draft.')
+                      }}
+                      disabled={aiAutomationBusyState !== 'idle'}
+                    >
+                      Reset
+                    </button>
+                  </div>
+
+                  <div
+                    className={`automation-sidebar-ai-generation__status automation-sidebar-ai-generation__status--${aiAutomationState}`}
+                  >
+                    <span className="automation-sidebar-ai-generation__status-label">
+                      State: {aiAutomationState}
+                    </span>
+                    <p>{aiAutomationStatusMessage}</p>
+                    {aiAutomationOperationId ? (
+                      <p className="automation-sidebar-ai-generation__meta">Operation: {aiAutomationOperationId}</p>
+                    ) : null}
+                  </div>
+
+                  {aiAutomationError ? (
+                    <div className="automation-sidebar-ai-generation__error">
+                      <p>{aiAutomationError}</p>
+                    </div>
+                  ) : null}
+
+                  {aiAutomationWarnings.length > 0 ? (
+                    <div className="automation-sidebar-ai-generation__warnings">
+                      <h4>Validation Warnings</h4>
+                      <ul>
+                        {aiAutomationWarnings.map((warning) => (
+                          <li key={warning}>{warning}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  ) : null}
+
+                  {aiAutomationValidationErrors.length > 0 ? (
+                    <div className="automation-sidebar-ai-generation__validation-errors">
+                      <h4>Approval Blocked</h4>
+                      <ul>
+                        {aiAutomationValidationErrors.map((error) => (
+                          <li key={error}>{error}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  ) : null}
+
+                  {aiAutomationDraft ? (
+                    <section className="automation-sidebar-ai-generation__preview" aria-label="Generated draft preview">
+                      <div className="automation-sidebar-ai-generation__preview-header">
+                        <h4>Draft Preview</h4>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setAiAutomationShowJson((current) => {
+                              const next = !current
+                              if (next) {
+                                setAiAutomationJsonDraft(JSON.stringify(aiAutomationDraft, null, 2))
+                              }
+                              return next
+                            })
+                          }}
+                        >
+                          {aiAutomationShowJson ? 'Show Step Editor' : 'Show JSON'}
+                        </button>
+                      </div>
+
+                      <label className="automation-sidebar-ai-generation__field">
+                        <span>Workflow Name</span>
+                        <input
+                          type="text"
+                          value={aiAutomationDraft.name}
+                          onChange={(event) => {
+                            const next = {
+                              ...aiAutomationDraft,
+                              name: event.target.value,
+                              updatedAt: new Date().toISOString()
+                            }
+                            setAiAutomationDraft(next)
+                            setAiAutomationJsonDraft(JSON.stringify(next, null, 2))
+                          }}
+                        />
+                      </label>
+
+                      <label className="automation-sidebar-ai-generation__field">
+                        <span>Description</span>
+                        <input
+                          type="text"
+                          value={aiAutomationDraft.description ?? ''}
+                          onChange={(event) => {
+                            const next = {
+                              ...aiAutomationDraft,
+                              description: event.target.value,
+                              updatedAt: new Date().toISOString()
+                            }
+                            setAiAutomationDraft(next)
+                            setAiAutomationJsonDraft(JSON.stringify(next, null, 2))
+                          }}
+                          placeholder="Optional workflow description"
+                        />
+                      </label>
+
+                      {aiAutomationShowJson ? (
+                        <div className="automation-sidebar-ai-generation__json-editor">
+                          <textarea
+                            value={aiAutomationJsonDraft}
+                            onChange={(event) => setAiAutomationJsonDraft(event.target.value)}
+                            rows={12}
+                          />
+                          {aiAutomationJsonError ? <p>{aiAutomationJsonError}</p> : null}
+                          <button
+                            type="button"
+                            onClick={applyDraftJson}
+                            disabled={aiAutomationBusyState !== 'idle'}
+                          >
+                            Apply JSON
+                          </button>
+                        </div>
+                      ) : (
+                        <ol className="automation-sidebar-ai-generation__steps">
+                          {aiAutomationDraft.steps.map((step, index) => (
+                            <li key={step.id} className="automation-sidebar-ai-generation__step">
+                              <div className="automation-sidebar-ai-generation__step-header">
+                                <strong>Step {step.seq}</strong>
+                                <span>{step.action}</span>
+                              </div>
+
+                              {step.action === 'navigate' ? (
+                                <label className="automation-sidebar-ai-generation__field">
+                                  <span>URL</span>
+                                  <input
+                                    type="text"
+                                    value={step.url}
+                                    onChange={(event) => {
+                                      updateDraftStep(index, (current) => ({
+                                        ...current,
+                                        action: 'navigate',
+                                        url: event.target.value
+                                      }))
+                                    }}
+                                  />
+                                </label>
+                              ) : null}
+
+                              {step.action === 'click' ? (
+                                <label className="automation-sidebar-ai-generation__field">
+                                  <span>Selector</span>
+                                  <input
+                                    type="text"
+                                    value={step.selector}
+                                    onChange={(event) => {
+                                      updateDraftStep(index, (current) => ({
+                                        ...current,
+                                        action: 'click',
+                                        selector: event.target.value
+                                      }))
+                                    }}
+                                  />
+                                </label>
+                              ) : null}
+
+                              {step.action === 'type' ? (
+                                <>
+                                  <label className="automation-sidebar-ai-generation__field">
+                                    <span>Selector</span>
+                                    <input
+                                      type="text"
+                                      value={step.selector}
+                                      onChange={(event) => {
+                                        updateDraftStep(index, (current) => ({
+                                          ...current,
+                                          action: 'type',
+                                          selector: event.target.value,
+                                          value: current.action === 'type' ? current.value : ''
+                                        }))
+                                      }}
+                                    />
+                                  </label>
+                                  <label className="automation-sidebar-ai-generation__field">
+                                    <span>Value</span>
+                                    <input
+                                      type="text"
+                                      value={toDraftInputValueString(step.value)}
+                                      onChange={(event) => {
+                                        updateDraftStep(index, (current) => ({
+                                          ...current,
+                                          action: 'type',
+                                          selector:
+                                            current.action === 'type' ? current.selector : '',
+                                          value: toDraftInputValue(event.target.value)
+                                        }))
+                                      }}
+                                    />
+                                  </label>
+                                </>
+                              ) : null}
+
+                              {step.action === 'wait' ? (
+                                <>
+                                  <label className="automation-sidebar-ai-generation__field">
+                                    <span>Wait For</span>
+                                    <select
+                                      value={step.waitFor}
+                                      onChange={(event) => {
+                                        const waitFor = event.target.value as 'navigation' | 'selector'
+                                        updateDraftStep(index, (current) => {
+                                          const baseWaitStep = {
+                                            id: current.id,
+                                            seq: current.seq,
+                                            action: 'wait' as const,
+                                            waitFor,
+                                            ...(current.action === 'wait' && typeof current.timeoutMs === 'number'
+                                              ? { timeoutMs: current.timeoutMs }
+                                              : {})
+                                          }
+
+                                          if (waitFor === 'selector') {
+                                            return {
+                                              ...baseWaitStep,
+                                              selector: current.action === 'wait' ? current.selector ?? '' : ''
+                                            }
+                                          }
+
+                                          return baseWaitStep
+                                        })
+                                      }}
+                                    >
+                                      <option value="navigation">navigation</option>
+                                      <option value="selector">selector</option>
+                                    </select>
+                                  </label>
+                                  {step.waitFor === 'selector' ? (
+                                    <label className="automation-sidebar-ai-generation__field">
+                                      <span>Selector</span>
+                                      <input
+                                        type="text"
+                                        value={step.selector ?? ''}
+                                        onChange={(event) => {
+                                          updateDraftStep(index, (current) => ({
+                                            ...current,
+                                            action: 'wait',
+                                            waitFor: 'selector',
+                                            selector: event.target.value
+                                          }))
+                                        }}
+                                      />
+                                    </label>
+                                  ) : null}
+                                  <label className="automation-sidebar-ai-generation__field">
+                                    <span>Timeout (ms)</span>
+                                    <input
+                                      type="number"
+                                      min={1}
+                                      value={step.timeoutMs ?? ''}
+                                      onChange={(event) => {
+                                        updateDraftStep(index, (current) => {
+                                          const waitFor =
+                                            current.action === 'wait' ? current.waitFor : 'navigation'
+                                          const base = {
+                                            id: current.id,
+                                            seq: current.seq,
+                                            action: 'wait' as const,
+                                            waitFor,
+                                            ...(event.target.value
+                                              ? { timeoutMs: Number(event.target.value) }
+                                              : {})
+                                          }
+
+                                          if (waitFor === 'selector') {
+                                            return {
+                                              ...base,
+                                              selector: current.action === 'wait' ? current.selector ?? '' : ''
+                                            }
+                                          }
+
+                                          return base
+                                        })
+                                      }}
+                                    />
+                                  </label>
+                                </>
+                              ) : null}
+                            </li>
+                          ))}
+                        </ol>
+                      )}
+
+                      <div className="automation-sidebar-ai-generation__approval-actions">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            void saveGeneratedDraft(false)
+                          }}
+                          disabled={aiAutomationBusyState !== 'idle'}
+                        >
+                          {aiAutomationBusyState === 'saving' ? 'Saving...' : 'Save Draft'}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            void saveGeneratedDraft(true)
+                          }}
+                          disabled={aiAutomationBusyState !== 'idle'}
+                        >
+                          {aiAutomationBusyState === 'save-and-run' ? 'Saving and Running...' : 'Save and Run'}
+                        </button>
+                        <button
+                          type="button"
+                          className="is-danger"
+                          onClick={discardGeneratedDraft}
+                          disabled={aiAutomationBusyState !== 'idle'}
+                        >
+                          Discard
+                        </button>
+                      </div>
+                    </section>
+                  ) : null}
+                </section>
+
                 <header className="automation-sidebar-ai-analysis__header">
                   <h3>Page Analysis</h3>
                   <p>Summarize or ask about the active tab with grounded citations.</p>
