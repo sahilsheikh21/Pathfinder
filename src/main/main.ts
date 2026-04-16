@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain } from 'electron'
+import { app, BrowserWindow, ipcMain, session } from 'electron'
 import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 import { basename, join, resolve } from 'node:path'
 import { BrowserRuntime } from './browserRuntime'
@@ -24,21 +24,39 @@ import {
   type ProviderConfigStore
 } from './llm/providerConfigStore'
 import { createSecretStore, type SecretStore } from './llm/secretStore'
+import { createSettingsStore, type SettingsStore } from './settingsStore'
+import { createPrivacyDataService, type PrivacyDataService } from './privacyDataService'
 import { createLLMAdapterService, type LLMAdapterService } from './llm/llmAdapterService'
 import { createPageAnalysisService, type PageAnalysisService } from './llm/pageAnalysisService'
 import {
   createAutomationGenerationService,
   type AutomationGenerationService
 } from './llm/automationGenerationService'
+import {
+  createLiveAgentOrchestrator,
+  type LiveAgentOrchestrator
+} from './liveAgentOrchestrator'
+import { createLiveAgentAuditStore, type LiveAgentAuditStore } from './liveAgentAuditStore'
 import { loadSessionSnapshot, saveSessionSnapshot } from './sessionStore'
 import { IPC_CHANNELS, type AppPlatformResponse, type AppVersionResponse } from '../shared/ipc'
 import {
   type AIAutomationGenerateResult,
+  type BrowserClearDataBucket,
+  type BrowserCookieMode,
+  type BrowserSettingsClearDataResult,
+  type BrowserSettingsSaveGeneralResult,
+  type BrowserSettingsSavePrivacyResult,
+  type BrowserSettingsSnapshot,
+  type BrowserSettingsValidationError,
   DEFAULT_HOME_SEARCH_TEMPLATE,
+  HOME_STARTER_URL,
   type AutomationHistoryStatus,
   type AutomationPlaybackStartRequest,
   type AutomationSidebarPreferences,
   type AutomationSidebarPreferencesUpdateRequest,
+  type LiveAgentGetAuditTrailResult,
+  type LiveAgentStartResult,
+  type LiveAgentStatusResult,
   type LLMProviderId,
   type PageAnalysisFailure,
   type PageAnalysisResult,
@@ -57,13 +75,32 @@ let automationHistoryStore: AutomationHistoryStore | null = null
 let automationUserDataPath: string | null = null
 let llmProviderConfigStore: ProviderConfigStore | null = null
 let llmSecretStore: SecretStore | null = null
+let settingsStore: SettingsStore | null = null
+let privacyDataService: PrivacyDataService | null = null
 let llmAdapterService: LLMAdapterService | null = null
 let pageAnalysisService: PageAnalysisService | null = null
 let automationGenerationService: AutomationGenerationService | null = null
+let liveAgentOrchestrator: LiveAgentOrchestrator | null = null
+let liveAgentAuditStore: LiveAgentAuditStore | null = null
 
 const cdpPort = Number(process.env.PATHFINDER_CDP_PORT ?? '9222')
 const cdpEndpoint = `http://127.0.0.1:${cdpPort}`
 const AUTOMATION_SIDEBAR_PREFERENCES_FILE_NAME = 'automation-sidebar-preferences.json'
+const resolvePreloadScriptPath = (): string => {
+  const candidates = [
+    resolve(__dirname, '../preload/index.js'),
+    resolve(__dirname, '../preload/preload.mjs')
+  ]
+
+  for (const candidate of candidates) {
+    if (existsSync(candidate)) {
+      return candidate
+    }
+  }
+
+  return candidates[0] ?? resolve(__dirname, '../preload/index.js')
+}
+
 const DEFAULT_AUTOMATION_SIDEBAR_PREFERENCES: AutomationSidebarPreferences = {
   collapsed: false,
   width: 320,
@@ -81,6 +118,12 @@ interface RunTrackingMetadata {
 }
 
 const activeRunMetadata = new Map<string, RunTrackingMetadata>()
+const SETTINGS_CLEAR_DATA_BUCKETS = new Set<BrowserClearDataBucket>([
+  'history-downloads',
+  'cookies-site-data',
+  'cache-storage',
+  'app-settings-subset'
+])
 
 const getSidebarPreferencesPath = (): string | null => {
   if (!automationUserDataPath) {
@@ -244,6 +287,177 @@ const toUnavailableAIAutomationGenerateResult = (message: string): AIAutomationG
   operationId: null,
   error: toUnavailableAIAutomationFailure(message)
 })
+
+const toUnavailableLiveAgentError = (message: string) => ({
+  reason: 'failed' as const,
+  message,
+  retryable: false
+})
+
+const toUnavailableLiveAgentStartResult = (message: string): LiveAgentStartResult => ({
+  ok: false,
+  runId: null,
+  state: 'failed',
+  approvalBatch: null,
+  error: toUnavailableLiveAgentError(message)
+})
+
+const toUnavailableLiveAgentStatusResult = (message: string): LiveAgentStatusResult => ({
+  state: 'idle',
+  runId: null,
+  tabId: null,
+  approvalBatch: null,
+  nextStep: null,
+  completedSteps: 0,
+  totalSteps: 0,
+  updatedAt: null,
+  error: toUnavailableLiveAgentError(message)
+})
+
+const toUnavailableLiveAgentAuditResult = (runId: string): LiveAgentGetAuditTrailResult => ({
+  runId,
+  events: []
+})
+
+const defaultSettingsSnapshot = (): BrowserSettingsSnapshot => ({
+  general: {
+    startupMode: 'restore-last-session',
+    startupUrls: [],
+    homepageMode: 'home-starter',
+    homepageUrl: HOME_STARTER_URL,
+    downloadsMode: 'ask-every-time',
+    downloadsPath: ''
+  },
+  privacy: {
+    cookieMode: 'allow-all'
+  },
+  updatedAt: new Date().toISOString(),
+  repairNotice: null
+})
+
+const toSettingsValidationError = (
+  error: unknown,
+  fieldFallback: string,
+  messageFallback: string
+): BrowserSettingsValidationError => {
+  if (typeof error === 'object' && error !== null) {
+    const candidate = error as Partial<BrowserSettingsValidationError>
+    if (
+      typeof candidate.field === 'string' &&
+      typeof candidate.code === 'string' &&
+      typeof candidate.message === 'string'
+    ) {
+      return {
+        field: candidate.field,
+        code: candidate.code,
+        message: toRedactedMainErrorMessage(candidate.message, messageFallback)
+      }
+    }
+  }
+
+  return {
+    field: fieldFallback,
+    code: 'invalid-value',
+    message: toRedactedMainErrorMessage(error, messageFallback)
+  }
+}
+
+const toUnavailableSettingsSaveGeneralResult = (message: string): BrowserSettingsSaveGeneralResult => ({
+  ok: false,
+  snapshot: defaultSettingsSnapshot(),
+  validationError: {
+    field: 'settings',
+    code: 'invalid-value',
+    message
+  }
+})
+
+const toUnavailableSettingsSavePrivacyResult = (message: string): BrowserSettingsSavePrivacyResult => ({
+  ok: false,
+  snapshot: defaultSettingsSnapshot(),
+  validationError: {
+    field: 'settings',
+    code: 'invalid-value',
+    message
+  }
+})
+
+const isClearDataBucket = (value: unknown): value is BrowserClearDataBucket => {
+  return typeof value === 'string' && SETTINGS_CLEAR_DATA_BUCKETS.has(value as BrowserClearDataBucket)
+}
+
+const toUnavailableSettingsClearDataResult = (message: string): BrowserSettingsClearDataResult => ({
+  ok: false,
+  snapshot: defaultSettingsSnapshot(),
+  bucketResults: [],
+  validationError: {
+    field: 'privacy.clearData',
+    code: 'invalid-value',
+    message
+  }
+})
+
+const applyCookieModePolicy = async (cookieMode: BrowserCookieMode): Promise<void> => {
+  switch (cookieMode) {
+    case 'allow-all': {
+      return
+    }
+    case 'block-third-party': {
+      // Electron does not provide first-class global third-party cookie blocking.
+      // Persisting this mode enables deterministic UX while enforcement can evolve later.
+      return
+    }
+    case 'block-all': {
+      await session.defaultSession.clearStorageData({ storages: ['cookies'] })
+      return
+    }
+  }
+}
+
+const recordLiveAgentRunStarted = (runId: string, prompt: string, tabId?: string): void => {
+  if (!automationHistoryStore) {
+    return
+  }
+
+  const targetUrlAtStart = tabId
+    ? browserRuntime?.resolveAutomationTarget(tabId)?.url ?? null
+    : null
+
+  const workflowNameSnapshot = prompt.trim() || 'Live Agent Run'
+  automationHistoryStore.recordRunStarted({
+    workflowId: 'live-agent',
+    workflowNameSnapshot,
+    tagsSnapshot: ['live-agent', 'ai'],
+    sourceLabel: 'unknown',
+    runId,
+    startedAt: new Date().toISOString(),
+    targetUrlAtStart,
+    workflowOrigin: 'imported'
+  })
+}
+
+const recordLiveAgentRunFinished = (event: {
+  runId: string
+  state: 'completed' | 'failed' | 'cancelled'
+  startedAt: string
+  finishedAt: string
+  message?: string
+}): void => {
+  if (!automationHistoryStore) {
+    return
+  }
+
+  const durationMs = Math.max(0, Date.parse(event.finishedAt) - Date.parse(event.startedAt))
+
+  automationHistoryStore.recordRunFinished({
+    runId: event.runId,
+    status: mapPlaybackStateToHistoryStatus(event.state),
+    finishedAt: event.finishedAt,
+    durationMs,
+    failureSnippet: event.state === 'failed' ? event.message ?? 'Live-agent run failed.' : null,
+    failureDetail: event.state === 'failed' ? event.message ?? null : null
+  })
+}
 
 const toStepFailure = (
   error: unknown
@@ -682,6 +896,105 @@ function registerIpcHandlers(): void {
     return previews
   })
 
+  ipcMain.handle(IPC_CHANNELS.settingsGetSnapshot, () => {
+    return settingsStore?.getSnapshot() ?? defaultSettingsSnapshot()
+  })
+
+  ipcMain.handle(IPC_CHANNELS.settingsSaveGeneral, (_event, request) => {
+    if (!settingsStore) {
+      return toUnavailableSettingsSaveGeneralResult('Settings service is not available.')
+    }
+
+    try {
+      return settingsStore.saveGeneral(request)
+    } catch (error) {
+      return {
+        ok: false,
+        snapshot: settingsStore.getSnapshot(),
+        validationError: toSettingsValidationError(
+          error,
+          'general',
+          'Unable to save general settings.'
+        )
+      }
+    }
+  })
+
+  ipcMain.handle(IPC_CHANNELS.settingsSavePrivacy, async (_event, request) => {
+    if (!settingsStore) {
+      return toUnavailableSettingsSavePrivacyResult('Settings service is not available.')
+    }
+
+    try {
+      const result = settingsStore.savePrivacy(request)
+      if (result.ok) {
+        await applyCookieModePolicy(result.snapshot.privacy.cookieMode)
+      }
+
+      return result
+    } catch (error) {
+      return {
+        ok: false,
+        snapshot: settingsStore.getSnapshot(),
+        validationError: toSettingsValidationError(
+          error,
+          'privacy',
+          'Unable to save privacy settings.'
+        )
+      }
+    }
+  })
+
+  ipcMain.handle(IPC_CHANNELS.settingsClearData, async (_event, request) => {
+    if (!settingsStore || !privacyDataService) {
+      return toUnavailableSettingsClearDataResult('Privacy settings service is not available.')
+    }
+
+    const selectedBuckets = Array.isArray(request?.buckets)
+      ? request.buckets.filter((bucket: unknown) => isClearDataBucket(bucket))
+      : []
+
+    if (selectedBuckets.length === 0) {
+      return {
+        ok: false,
+        snapshot: settingsStore.getSnapshot(),
+        bucketResults: [],
+        validationError: {
+          field: 'privacy.clearData.buckets',
+          code: 'required',
+          message: 'Select at least one data bucket to clear.'
+        }
+      }
+    }
+
+    try {
+      const bucketResults = await privacyDataService.clearSelectedBuckets({
+        buckets: selectedBuckets
+      })
+
+      return {
+        ok: bucketResults.every((result) => result.ok),
+        snapshot: settingsStore.getSnapshot(),
+        bucketResults
+      }
+    } catch (error) {
+      return {
+        ok: false,
+        snapshot: settingsStore.getSnapshot(),
+        bucketResults: [],
+        validationError: toSettingsValidationError(
+          error,
+          'privacy.clearData',
+          'Unable to clear selected data buckets.'
+        )
+      }
+    }
+  })
+
+  ipcMain.handle(IPC_CHANNELS.settingsGetRepairNotice, () => {
+    return settingsStore?.getRepairNotice() ?? null
+  })
+
   ipcMain.handle(IPC_CHANNELS.llmGetConfig, () => {
     if (!llmAdapterService) {
       return {
@@ -818,6 +1131,124 @@ function registerIpcHandlers(): void {
     return automationGenerationService.getStatus()
   })
 
+  ipcMain.handle(IPC_CHANNELS.liveAgentStart, (_event, request) => {
+    if (!liveAgentOrchestrator) {
+      return toUnavailableLiveAgentStartResult('Live agent orchestrator is not available.')
+    }
+
+    try {
+      const result = liveAgentOrchestrator.start(request)
+      if (result.ok && result.runId) {
+        recordLiveAgentRunStarted(result.runId, request.prompt, request.tabId)
+      }
+
+      return result
+    } catch (error) {
+      return toUnavailableLiveAgentStartResult(
+        toRedactedMainErrorMessage(error, 'Unable to start live-agent run.')
+      )
+    }
+  })
+
+  ipcMain.handle(IPC_CHANNELS.liveAgentGetStatus, (_event, request) => {
+    if (!liveAgentOrchestrator) {
+      return toUnavailableLiveAgentStatusResult('Live agent orchestrator is not available.')
+    }
+
+    try {
+      return liveAgentOrchestrator.getStatus(request)
+    } catch (error) {
+      return toUnavailableLiveAgentStatusResult(
+        toRedactedMainErrorMessage(error, 'Unable to read live-agent status.')
+      )
+    }
+  })
+
+  ipcMain.handle(IPC_CHANNELS.liveAgentApproveBatch, (_event, request) => {
+    if (!liveAgentOrchestrator) {
+      return {
+        ok: false,
+        runId: null,
+        state: 'idle' as const,
+        approvalBatch: null,
+        error: toUnavailableLiveAgentError('Live agent orchestrator is not available.')
+      }
+    }
+
+    try {
+      return liveAgentOrchestrator.approveBatch(request)
+    } catch (error) {
+      return {
+        ok: false,
+        runId: request?.runId ?? null,
+        state: 'failed' as const,
+        approvalBatch: null,
+        error: toUnavailableLiveAgentError(
+          toRedactedMainErrorMessage(error, 'Unable to approve live-agent batch.')
+        )
+      }
+    }
+  })
+
+  ipcMain.handle(IPC_CHANNELS.liveAgentPause, (_event, request) => {
+    if (!liveAgentOrchestrator) {
+      return {
+        ok: false,
+        runId: null,
+        state: 'idle' as const,
+        paused: false,
+        error: toUnavailableLiveAgentError('Live agent orchestrator is not available.')
+      }
+    }
+
+    return liveAgentOrchestrator.pause(request)
+  })
+
+  ipcMain.handle(IPC_CHANNELS.liveAgentResume, (_event, request) => {
+    if (!liveAgentOrchestrator) {
+      return {
+        ok: false,
+        runId: null,
+        state: 'idle' as const,
+        resumed: false,
+        error: toUnavailableLiveAgentError('Live agent orchestrator is not available.')
+      }
+    }
+
+    return liveAgentOrchestrator.resume(request)
+  })
+
+  ipcMain.handle(IPC_CHANNELS.liveAgentCancel, (_event, request) => {
+    if (!liveAgentOrchestrator) {
+      return {
+        ok: false,
+        runId: null,
+        state: 'idle' as const,
+        cancelled: false,
+        error: toUnavailableLiveAgentError('Live agent orchestrator is not available.')
+      }
+    }
+
+    return liveAgentOrchestrator.cancel(request)
+  })
+
+  ipcMain.handle(IPC_CHANNELS.liveAgentGetAuditTrail, (_event, request) => {
+    const runId = typeof request?.runId === 'string' ? request.runId : ''
+
+    if (!liveAgentOrchestrator || !liveAgentAuditStore) {
+      return toUnavailableLiveAgentAuditResult(runId)
+    }
+
+    try {
+      return {
+        runId,
+        events: liveAgentAuditStore.listEvents(runId)
+      }
+    } catch {
+      return toUnavailableLiveAgentAuditResult(runId)
+    }
+  })
+
   ipcMain.handle(IPC_CHANNELS.pageAnalysisSummarize, async (_event, request) => {
     if (!pageAnalysisService) {
       return toUnavailablePageAnalysisResult('summarize', 'Page analysis service is not available.')
@@ -929,10 +1360,32 @@ function createWindow(): void {
   automationHistoryStore = createAutomationHistoryStore(userDataPath)
   llmProviderConfigStore = createProviderConfigStore(userDataPath)
   llmSecretStore = createSecretStore(userDataPath)
+  settingsStore = createSettingsStore(userDataPath)
+  privacyDataService = createPrivacyDataService({
+    session: session.defaultSession,
+    clearHistoryDownloads: () => {
+      void automationHistoryStore?.clear({ preserveRunning: false })
+      activeRunMetadata.clear()
+    },
+    clearAppSettingsSubset: () => {
+      settingsStore?.clearAppSettingsSubset()
+      homeStore?.saveHomePreferences({ searchTemplate: DEFAULT_HOME_SEARCH_TEMPLATE })
+    }
+  })
+  liveAgentAuditStore = createLiveAgentAuditStore(userDataPath)
   llmAdapterService = createLLMAdapterService({
     configStore: llmProviderConfigStore,
     secretStore: llmSecretStore
   })
+  liveAgentOrchestrator = createLiveAgentOrchestrator({
+    defaultBatchSize: 3,
+    auditStore: liveAgentAuditStore,
+    onRunFinished: (event) => {
+      recordLiveAgentRunFinished(event)
+    }
+  })
+
+  const preloadPath = resolvePreloadScriptPath()
 
   const mainWindow = new BrowserWindow({
     width: 1280,
@@ -942,19 +1395,44 @@ function createWindow(): void {
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: true,
-      preload: resolve(__dirname, '../preload/index.js')
+      preload: preloadPath
     }
+  })
+
+  mainWindow.webContents.on(
+    'did-fail-load',
+    (_event, errorCode, errorDescription, validatedURL, isMainFrame) => {
+      if (!isMainFrame) {
+        return
+      }
+
+      console.error('[main-window] did-fail-load', {
+        errorCode,
+        errorDescription,
+        validatedURL
+      })
+    }
+  )
+
+  mainWindow.webContents.on('preload-error', (_event, preloadSource, error) => {
+    console.error('[main-window] preload-error', {
+      preloadSource,
+      message: error.message
+    })
   })
 
   mainWindow.once('ready-to-show', () => {
     mainWindow.show()
   })
 
+  const devServerUrl =
+    process.env.ELECTRON_RENDERER_URL ?? process.env.VITE_DEV_SERVER_URL
+
   quickSearchWindowManager = createQuickSearchWindowManager({
-    preloadPath: resolve(__dirname, '../preload/index.js'),
+    preloadPath,
     rendererIndexPath: resolve(__dirname, '../renderer/index.html'),
-    ...(process.env.VITE_DEV_SERVER_URL
-      ? { devServerUrl: process.env.VITE_DEV_SERVER_URL }
+    ...(devServerUrl
+      ? { devServerUrl }
       : {})
   })
 
@@ -1098,11 +1576,11 @@ function createWindow(): void {
   if (snapshot) {
     browserRuntime.restoreFromSnapshot(snapshot)
   } else {
-    browserRuntime.createTab('about:blank')
+    browserRuntime.createTab(HOME_STARTER_URL)
   }
 
-  if (process.env.VITE_DEV_SERVER_URL) {
-    mainWindow.loadURL(process.env.VITE_DEV_SERVER_URL)
+  if (devServerUrl) {
+    mainWindow.loadURL(devServerUrl)
   } else {
     mainWindow.loadFile(resolve(__dirname, '../renderer/index.html'))
   }
