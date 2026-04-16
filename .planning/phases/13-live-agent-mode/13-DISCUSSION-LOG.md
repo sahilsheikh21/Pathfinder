@@ -27,11 +27,11 @@
 | Option | Description | Selected |
 |--------|-------------|----------|
 | A | Per-step approval modal for each high-impact action | |
-| B | Hybrid: plan preview approval + checkpoint approvals at high-impact steps | ✓ |
-| C | Batch approvals for next N steps | |
+| B | Hybrid: plan preview approval + checkpoint approvals at high-impact steps | |
+| C | Batch approvals for next N steps | ✓ |
 
-**User's choice:** Option B
-**Notes:** Hybrid model balances control and pace for multi-step execution.
+**User's choice:** Option C
+**Notes:** Batch approvals were chosen to reduce repeated prompts while preserving explicit user control over execution windows.
 
 ---
 

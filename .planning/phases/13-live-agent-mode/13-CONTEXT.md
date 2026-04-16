@@ -19,9 +19,9 @@ Allow AI-assisted multi-step browser execution under explicit user control, with
 - **D-03:** Approval is always action-scoped; prior approvals in a session do not permanently bypass future high-impact checks.
 
 ### Approval Cadence and UX
-- **D-04:** Use hybrid approval flow: one initial plan-preview approval, plus checkpoint approvals when a high-impact step is reached.
-- **D-05:** Each approval prompt must show action intent, target, risk tier, and expected side effect so the user can make an informed decision quickly.
-- **D-06:** User controls in the checkpoint are `Approve`, `Reject`, and `Cancel run`; rejected high-impact steps do not auto-fallback into unsafe alternatives.
+- **D-04:** Use batch approval flow: user approves the next N planned steps as an explicit execution batch.
+- **D-05:** Batch approval view must list each step's intent, target, risk tier, and expected side effect before confirmation.
+- **D-06:** User can reduce scope to smaller batches or single-step approval at any time; `Reject` and `Cancel run` remain available before execution.
 
 ### Step Log and Rationale Visibility
 - **D-07:** Log every executed/planned step with: planned action, risk tier, approval decision (if applicable), observed result, and next-step rationale.
@@ -94,7 +94,7 @@ Allow AI-assisted multi-step browser execution under explicit user control, with
 ## Specific Ideas
 
 - User selected all four gray-area domains for this phase (approval policy, cadence UX, logging model, run controls).
-- To recover from interrupted interactive flow, decisions were resolved with the recommended safety-first defaults aligned to prior phase patterns and AI-04.
+- Final locked selections: `1b,2c,3b,4a`.
 
 </specifics>
 
