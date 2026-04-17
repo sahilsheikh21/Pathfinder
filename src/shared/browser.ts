@@ -60,6 +60,47 @@ export type BrowserDownloadsMode = 'ask-every-time' | 'fixed-path'
 
 export type BrowserCookieMode = 'allow-all' | 'block-third-party' | 'block-all'
 
+export type BrowserThemeMode = 'light' | 'dark' | 'system'
+
+export type BrowserFontScalePreset = 'small' | 'medium' | 'large'
+
+export type BrowserSidebarPosition = 'left' | 'right'
+
+export interface BrowserAppearanceSettings {
+  themeMode: BrowserThemeMode
+  fontScalePreset: BrowserFontScalePreset
+  sidebarPosition: BrowserSidebarPosition
+}
+
+export type BrowserShortcutCommandId =
+  | 'command-palette.open'
+  | 'command-palette.open-legacy'
+  | 'quick-search.toggle'
+  | 'settings.open'
+  | 'sidebar.toggle'
+
+export type BrowserShortcutBinding = string
+
+export type BrowserShortcutBindings = Record<BrowserShortcutCommandId, BrowserShortcutBinding>
+
+export interface BrowserShortcutSettings {
+  bindings: BrowserShortcutBindings
+}
+
+export const DEFAULT_APPEARANCE_SETTINGS: BrowserAppearanceSettings = {
+  themeMode: 'system',
+  fontScalePreset: 'medium',
+  sidebarPosition: 'left'
+}
+
+export const DEFAULT_SHORTCUT_BINDINGS: BrowserShortcutBindings = {
+  'command-palette.open': 'Ctrl+K',
+  'command-palette.open-legacy': 'Ctrl+Shift+P',
+  'quick-search.toggle': 'Ctrl+Shift+S',
+  'settings.open': 'Ctrl+,',
+  'sidebar.toggle': 'Ctrl+B'
+}
+
 export type BrowserClearDataBucket =
   | 'history-downloads'
   | 'cookies-site-data'
@@ -87,13 +128,22 @@ export interface BrowserSettingsRepairNotice {
 export interface BrowserSettingsSnapshot {
   general: BrowserGeneralSettings
   privacy: BrowserPrivacySettings
+  appearance: BrowserAppearanceSettings
+  shortcuts: BrowserShortcutSettings
   updatedAt: string
   repairNotice: BrowserSettingsRepairNotice | null
 }
 
 export interface BrowserSettingsValidationError {
   field: string
-  code: 'required' | 'invalid-value' | 'invalid-url' | 'invalid-path' | 'invalid-selection'
+  code:
+    | 'required'
+    | 'invalid-value'
+    | 'invalid-url'
+    | 'invalid-path'
+    | 'invalid-selection'
+    | 'invalid-binding'
+    | 'binding-conflict'
   message: string
 }
 
@@ -105,6 +155,14 @@ export interface BrowserSettingsSavePrivacyRequest {
   privacy: BrowserPrivacySettings
 }
 
+export interface BrowserSettingsSaveAppearanceRequest {
+  appearance: BrowserAppearanceSettings
+}
+
+export interface BrowserSettingsSaveShortcutsRequest {
+  shortcuts: BrowserShortcutSettings
+}
+
 export interface BrowserSettingsSaveGeneralResult {
   ok: boolean
   snapshot: BrowserSettingsSnapshot
@@ -112,6 +170,18 @@ export interface BrowserSettingsSaveGeneralResult {
 }
 
 export interface BrowserSettingsSavePrivacyResult {
+  ok: boolean
+  snapshot: BrowserSettingsSnapshot
+  validationError?: BrowserSettingsValidationError
+}
+
+export interface BrowserSettingsSaveAppearanceResult {
+  ok: boolean
+  snapshot: BrowserSettingsSnapshot
+  validationError?: BrowserSettingsValidationError
+}
+
+export interface BrowserSettingsSaveShortcutsResult {
   ok: boolean
   snapshot: BrowserSettingsSnapshot
   validationError?: BrowserSettingsValidationError

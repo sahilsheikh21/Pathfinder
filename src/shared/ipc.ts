@@ -39,10 +39,14 @@ import type {
   BrowserClearDataRequest,
   BrowserSettingsClearDataResult,
   BrowserSettingsRepairNotice,
+  BrowserSettingsSaveAppearanceRequest,
+  BrowserSettingsSaveAppearanceResult,
   BrowserSettingsSaveGeneralRequest,
   BrowserSettingsSaveGeneralResult,
   BrowserSettingsSavePrivacyRequest,
   BrowserSettingsSavePrivacyResult,
+  BrowserSettingsSaveShortcutsRequest,
+  BrowserSettingsSaveShortcutsResult,
   BrowserSettingsSnapshot,
   AutomationConnectRequest,
   AutomationConnectResult,
@@ -129,6 +133,8 @@ export const IPC_CHANNELS = {
   settingsGetSnapshot: 'settings:getSnapshot',
   settingsSaveGeneral: 'settings:saveGeneral',
   settingsSavePrivacy: 'settings:savePrivacy',
+  settingsSaveAppearance: 'settings:saveAppearance',
+  settingsSaveShortcuts: 'settings:saveShortcuts',
   settingsClearData: 'settings:clearData',
   settingsGetRepairNotice: 'settings:getRepairNotice',
   llmGetConfig: 'llm:getConfig',
@@ -226,6 +232,12 @@ export interface PathfinderApi {
   settingsSavePrivacy: (
     request: BrowserSettingsSavePrivacyRequest
   ) => Promise<BrowserSettingsSavePrivacyResult>
+  settingsSaveAppearance: (
+    request: BrowserSettingsSaveAppearanceRequest
+  ) => Promise<BrowserSettingsSaveAppearanceResult>
+  settingsSaveShortcuts: (
+    request: BrowserSettingsSaveShortcutsRequest
+  ) => Promise<BrowserSettingsSaveShortcutsResult>
   settingsClearData: (request: BrowserClearDataRequest) => Promise<BrowserSettingsClearDataResult>
   settingsGetRepairNotice: () => Promise<BrowserSettingsRepairNotice | null>
   llmGetConfig: () => Promise<LLMAdapterConfigState>
