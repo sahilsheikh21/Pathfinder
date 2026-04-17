@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import type {
+  BrowserAppearanceSettings,
   BrowserClearDataBucket,
   BrowserGeneralSettings,
   BrowserPrivacySettings,
@@ -7,19 +8,20 @@ import type {
   ClearDataBucketResult
 } from '../../shared/browser'
 
-type SettingsPanelSection = 'general' | 'privacy' | 'ai' | 'advanced'
+type SettingsPanelSection = 'general' | 'appearance' | 'privacy' | 'ai' | 'advanced'
 
 interface SettingsPanelProps {
   isOpen: boolean
   snapshot: BrowserSettingsSnapshot | null
   loading: boolean
-  busyState: 'idle' | 'saving-general' | 'saving-privacy' | 'clearing-data'
+  busyState: 'idle' | 'saving-general' | 'saving-appearance' | 'saving-privacy' | 'clearing-data'
   statusMessage: string
   statusTone: 'neutral' | 'success' | 'error'
   validationErrors: Partial<Record<string, string>>
   clearDataResults: ClearDataBucketResult[]
   onRequestClose: () => void
   onSaveGeneral: (general: BrowserGeneralSettings) => Promise<void>
+  onSaveAppearance: (appearance: BrowserAppearanceSettings) => Promise<void>
   onSavePrivacy: (privacy: BrowserPrivacySettings) => Promise<void>
   onClearData: (buckets: BrowserClearDataBucket[]) => Promise<void>
 }
@@ -49,6 +51,7 @@ const CLEAR_DATA_BUCKET_OPTIONS: Array<{ value: BrowserClearDataBucket; label: s
 
 const SECTION_LABELS: Record<SettingsPanelSection, string> = {
   general: 'General',
+  appearance: 'Appearance',
   privacy: 'Privacy',
   ai: 'AI',
   advanced: 'Advanced'
@@ -72,6 +75,7 @@ function SettingsPanel({
   clearDataResults,
   onRequestClose,
   onSaveGeneral,
+  onSaveAppearance,
   onSavePrivacy,
   onClearData
 }: SettingsPanelProps) {
@@ -81,6 +85,9 @@ function SettingsPanel({
   )
   const [privacyDraft, setPrivacyDraft] = useState<BrowserPrivacySettings | null>(
     () => snapshot?.privacy ?? null
+  )
+  const [appearanceDraft, setAppearanceDraft] = useState<BrowserAppearanceSettings | null>(
+    () => snapshot?.appearance ?? null
   )
   const [startupUrlsDraft, setStartupUrlsDraft] = useState(
     () => snapshot?.general.startupUrls.join('\n') ?? ''
@@ -124,7 +131,7 @@ function SettingsPanel({
       <header className="settings-panel__header">
         <div>
           <h2>Settings</h2>
-          <p>Configure startup behavior, privacy controls, and runtime defaults.</p>
+          <p>Configure startup behavior, appearance, privacy controls, and runtime defaults.</p>
         </div>
         <button type="button" className="settings-panel__close" onClick={onRequestClose}>
           Close
@@ -304,6 +311,96 @@ function SettingsPanel({
               }}
             >
               {busyState === 'saving-general' ? 'Saving...' : 'Save General Settings'}
+            </button>
+          </div>
+        </section>
+      ) : null}
+
+      {activeSection === 'appearance' && appearanceDraft ? (
+        <section className="settings-panel__section" aria-label="Appearance settings">
+          <label className="settings-panel__field">
+            <span>Theme Mode</span>
+            <select
+              value={appearanceDraft.themeMode}
+              onChange={(event) => {
+                const themeMode = event.target.value as BrowserAppearanceSettings['themeMode']
+                setAppearanceDraft((current) =>
+                  current
+                    ? {
+                        ...current,
+                        themeMode
+                      }
+                    : current
+                )
+              }}
+            >
+              <option value="system">System</option>
+              <option value="light">Light</option>
+              <option value="dark">Dark</option>
+            </select>
+            {validationErrors['appearance.themeMode'] ? (
+              <small>{validationErrors['appearance.themeMode']}</small>
+            ) : null}
+          </label>
+
+          <label className="settings-panel__field">
+            <span>Font Size</span>
+            <select
+              value={appearanceDraft.fontScalePreset}
+              onChange={(event) => {
+                const fontScalePreset = event.target.value as BrowserAppearanceSettings['fontScalePreset']
+                setAppearanceDraft((current) =>
+                  current
+                    ? {
+                        ...current,
+                        fontScalePreset
+                      }
+                    : current
+                )
+              }}
+            >
+              <option value="small">Small</option>
+              <option value="medium">Medium</option>
+              <option value="large">Large</option>
+            </select>
+            {validationErrors['appearance.fontScalePreset'] ? (
+              <small>{validationErrors['appearance.fontScalePreset']}</small>
+            ) : null}
+          </label>
+
+          <label className="settings-panel__field">
+            <span>Tab Sidebar Position</span>
+            <select
+              value={appearanceDraft.sidebarPosition}
+              onChange={(event) => {
+                const sidebarPosition = event.target.value as BrowserAppearanceSettings['sidebarPosition']
+                setAppearanceDraft((current) =>
+                  current
+                    ? {
+                        ...current,
+                        sidebarPosition
+                      }
+                    : current
+                )
+              }}
+            >
+              <option value="left">Left</option>
+              <option value="right">Right</option>
+            </select>
+            {validationErrors['appearance.sidebarPosition'] ? (
+              <small>{validationErrors['appearance.sidebarPosition']}</small>
+            ) : null}
+          </label>
+
+          <div className="settings-panel__actions">
+            <button
+              type="button"
+              disabled={busyState !== 'idle'}
+              onClick={() => {
+                void onSaveAppearance(appearanceDraft)
+              }}
+            >
+              {busyState === 'saving-appearance' ? 'Saving...' : 'Save Appearance Settings'}
             </button>
           </div>
         </section>

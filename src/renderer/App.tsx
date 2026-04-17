@@ -11,7 +11,9 @@ import {
   type AutomationPlaybackVariablePrompt,
   type AutomationSidebarPreferences,
   type AutomationSidebarSection,
+  type BrowserAppearanceSettings,
   type BrowserClearDataBucket,
+  DEFAULT_APPEARANCE_SETTINGS,
   type BrowserSettingsSnapshot,
   type BrowserSettingsValidationError,
   type ClearDataBucketResult,
@@ -48,6 +50,7 @@ import HomeStarterPage from './components/HomeStarterPage'
 import SettingsPanel from './components/SettingsPanel'
 import { createBrowserCommands, type CommandPaletteCommand } from './lib/commandPalette'
 import NavigationBar from './components/NavigationBar'
+import { applyTheme, subscribeToSystemThemeChanges } from './theme'
 import './styles/global.css'
 
 const getPlaybackFailureMessage = (result: AutomationPlaybackStartResult): string => {
@@ -163,7 +166,8 @@ const DEFAULT_AI_AUTOMATION_CONSTRAINTS: AIAutomationConstraintDraft = {
 
 const EMPTY_SETTINGS_VALIDATION_ERRORS: Partial<Record<string, string>> = {}
 
-const DEFAULT_SETTINGS_STATUS_MESSAGE = 'Open Settings to manage general and privacy behavior.'
+const DEFAULT_SETTINGS_STATUS_MESSAGE =
+  'Open Settings to manage general, appearance, and privacy behavior.'
 
 const toDraftInputValueString = (value: RecorderInputValue): string => {
   if (typeof value === 'string') {
@@ -344,9 +348,12 @@ function App() {
   const [isOverlayMode, setIsOverlayMode] = useState(() => window.innerWidth < 980)
   const [isOverlayOpen, setIsOverlayOpen] = useState(false)
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
+  const [appearanceSettings, setAppearanceSettings] = useState<BrowserAppearanceSettings>({
+    ...DEFAULT_APPEARANCE_SETTINGS
+  })
   const [settingsSnapshot, setSettingsSnapshot] = useState<BrowserSettingsSnapshot | null>(null)
   const [settingsBusyState, setSettingsBusyState] = useState<
-    'idle' | 'loading' | 'saving-general' | 'saving-privacy' | 'clearing-data'
+    'idle' | 'loading' | 'saving-general' | 'saving-appearance' | 'saving-privacy' | 'clearing-data'
   >('idle')
   const [settingsStatusMessage, setSettingsStatusMessage] = useState(DEFAULT_SETTINGS_STATUS_MESSAGE)
   const [settingsStatusTone, setSettingsStatusTone] = useState<'neutral' | 'success' | 'error'>('neutral')
@@ -667,6 +674,17 @@ function App() {
     []
   )
 
+  const syncSettingsSnapshot = useCallback((snapshot: BrowserSettingsSnapshot): void => {
+    setSettingsSnapshot(snapshot)
+    setAppearanceSettings(snapshot.appearance)
+  }, [])
+
+  const loadSettingsSnapshot = useCallback(async (): Promise<BrowserSettingsSnapshot> => {
+    const snapshot = await window.pathfinder.settingsGetSnapshot()
+    syncSettingsSnapshot(snapshot)
+    return snapshot
+  }, [syncSettingsSnapshot])
+
   const openSettingsPanel = useCallback(async (): Promise<void> => {
     settingsReturnFocusRef.current =
       document.activeElement instanceof HTMLElement ? document.activeElement : null
@@ -679,8 +697,7 @@ function App() {
     setSettingsClearDataResults([])
 
     try {
-      const snapshot = await window.pathfinder.settingsGetSnapshot()
-      setSettingsSnapshot(snapshot)
+      const snapshot = await loadSettingsSnapshot()
 
       if (snapshot.repairNotice) {
         setSettingsStatusTone('neutral')
@@ -699,7 +716,7 @@ function App() {
     } finally {
       setSettingsBusyState('idle')
     }
-  }, [])
+  }, [loadSettingsSnapshot])
 
   const closeSettingsPanel = useCallback((): void => {
     setIsSettingsOpen(false)
@@ -720,7 +737,7 @@ function App() {
 
       try {
         const result = await window.pathfinder.settingsSaveGeneral({ general })
-        setSettingsSnapshot(result.snapshot)
+        syncSettingsSnapshot(result.snapshot)
         applySettingsValidationError(result.validationError)
 
         if (result.ok) {
@@ -740,7 +757,39 @@ function App() {
         setSettingsBusyState('idle')
       }
     },
-    [applySettingsValidationError]
+    [applySettingsValidationError, syncSettingsSnapshot]
+  )
+
+  const saveAppearanceSettings = useCallback(
+    async (appearance: BrowserAppearanceSettings): Promise<void> => {
+      setSettingsBusyState('saving-appearance')
+      setSettingsStatusTone('neutral')
+      setSettingsStatusMessage('Saving appearance settings...')
+      setSettingsClearDataResults([])
+
+      try {
+        const result = await window.pathfinder.settingsSaveAppearance({ appearance })
+        syncSettingsSnapshot(result.snapshot)
+        applySettingsValidationError(result.validationError)
+
+        if (result.ok) {
+          setSettingsStatusTone('success')
+          setSettingsStatusMessage('Appearance settings saved successfully.')
+          return
+        }
+
+        setSettingsStatusTone('error')
+        setSettingsStatusMessage(result.validationError?.message ?? 'Appearance settings could not be saved.')
+      } catch (error) {
+        setSettingsStatusTone('error')
+        setSettingsStatusMessage(
+          error instanceof Error ? error.message : 'Appearance settings could not be saved.'
+        )
+      } finally {
+        setSettingsBusyState('idle')
+      }
+    },
+    [applySettingsValidationError, syncSettingsSnapshot]
   )
 
   const savePrivacySettings = useCallback(
@@ -752,7 +801,7 @@ function App() {
 
       try {
         const result = await window.pathfinder.settingsSavePrivacy({ privacy })
-        setSettingsSnapshot(result.snapshot)
+        syncSettingsSnapshot(result.snapshot)
         applySettingsValidationError(result.validationError)
 
         if (result.ok) {
@@ -776,7 +825,7 @@ function App() {
         setSettingsBusyState('idle')
       }
     },
-    [applySettingsValidationError]
+    [applySettingsValidationError, syncSettingsSnapshot]
   )
 
   const clearSettingsDataBuckets = useCallback(
@@ -787,7 +836,7 @@ function App() {
 
       try {
         const result = await window.pathfinder.settingsClearData({ buckets })
-        setSettingsSnapshot(result.snapshot)
+        syncSettingsSnapshot(result.snapshot)
         setSettingsClearDataResults(result.bucketResults)
         applySettingsValidationError(result.validationError)
 
@@ -819,7 +868,7 @@ function App() {
         setSettingsBusyState('idle')
       }
     },
-    [applySettingsValidationError]
+    [applySettingsValidationError, syncSettingsSnapshot]
   )
 
   const buildAutomationGenerateRequestConstraints = useCallback(() => {
@@ -2325,6 +2374,34 @@ function App() {
     activeTabId
   })
 
+  const shellClassName = useMemo(() => {
+    return appearanceSettings.sidebarPosition === 'right'
+      ? 'browser-shell browser-shell--tab-strip-right'
+      : 'browser-shell'
+  }, [appearanceSettings.sidebarPosition])
+
+  useEffect(() => {
+    void loadSettingsSnapshot().catch(() => {
+      // Keep defaults active when settings snapshot cannot be loaded.
+    })
+  }, [loadSettingsSnapshot])
+
+  useEffect(() => {
+    const root = document.documentElement
+    root.classList.remove('font-scale-small', 'font-scale-medium', 'font-scale-large')
+    root.classList.add(`font-scale-${appearanceSettings.fontScalePreset}`)
+
+    applyTheme(appearanceSettings.themeMode)
+
+    if (appearanceSettings.themeMode !== 'system') {
+      return
+    }
+
+    return subscribeToSystemThemeChanges(() => {
+      applyTheme('system')
+    })
+  }, [appearanceSettings.fontScalePreset, appearanceSettings.themeMode])
+
   useEffect(() => {
     const initialRefreshTimer = window.setTimeout(() => {
       void refreshRecorderStatus()
@@ -2421,7 +2498,7 @@ function App() {
   }, [openCommandPalette])
 
   return (
-    <main className="browser-shell">
+    <main className={shellClassName}>
       <section className="browser-chrome">
         <div className="browser-chrome__status-row">
           <span
@@ -3569,6 +3646,7 @@ function App() {
           clearDataResults={settingsClearDataResults}
           onRequestClose={closeSettingsPanel}
           onSaveGeneral={saveGeneralSettings}
+          onSaveAppearance={saveAppearanceSettings}
           onSavePrivacy={savePrivacySettings}
           onClearData={clearSettingsDataBuckets}
         />
