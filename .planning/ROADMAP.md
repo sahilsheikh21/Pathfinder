@@ -32,7 +32,7 @@
 | 12 | AI automation generation | 2/2 | Complete    | 2026-04-16 |
 | 13 | Live agent mode | Controlled multi-step AI execution with approvals | AI-04 | 3 |
 | 14 | Settings system | 3/3 | Complete    | 2026-04-17 |
-| 15 | Theming and shortcuts | 2/3 | In Progress|  |
+| 15 | Theming and shortcuts | 3/3 | Complete   | 2026-04-17 |
 | 16 | Packaging and distribution | Signed installer and safe update channel | REL-01, REL-02 | 3 |
 
 ## Milestone 1: Core Browser Shell (Phases 1-5)
@@ -260,12 +260,12 @@ Success criteria:
 Goal: Deliver appearance personalization and keyboard customization.
 Requirements: SET-02, SET-05
 Status: Planned (2026-04-17)
-**Plans:** 2/3 plans executed
+**Plans:** 3/3 plans complete
 
 Plans:
 - [x] 15-01-PLAN.md - Extend canonical settings contracts/store and typed IPC for appearance and shortcut preferences
 - [x] 15-02-PLAN.md - Implement appearance settings UI and immediate runtime application (theme, font scale, sidebar position)
-- [ ] 15-03-PLAN.md - Implement editable shortcut bindings with conflict-safe persistence and runtime dispatch
+- [x] 15-03-PLAN.md - Implement editable shortcut bindings with conflict-safe persistence and runtime dispatch
 
 Success criteria:
 1. Theme mode and font-size updates apply immediately and persist.
