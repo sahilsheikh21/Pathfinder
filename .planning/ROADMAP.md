@@ -31,7 +31,7 @@
 | 11 | Page analysis | 2/3 | In Progress|  |
 | 12 | AI automation generation | 2/2 | Complete    | 2026-04-16 |
 | 13 | Live agent mode | Controlled multi-step AI execution with approvals | AI-04 | 3 |
-| 14 | Settings system | Full general/privacy configuration surface | SET-01, SET-03 | 3 |
+| 14 | Settings system | 3/3 | Complete    | 2026-04-17 |
 | 15 | Theming and shortcuts | Appearance controls and keyboard customization | SET-02, SET-05 | 3 |
 | 16 | Packaging and distribution | Signed installer and safe update channel | REL-01, REL-02 | 3 |
 
@@ -244,12 +244,12 @@ Success criteria:
 Goal: Complete user-facing configuration surface for browser and privacy behavior.
 Requirements: SET-01, SET-03
 Status: Planned (2026-04-16)
-**Plans:** 3 plans
+**Plans:** 3/3 plans complete
 
 Plans:
-- [ ] 14-01-PLAN.md - Define canonical settings contracts, store validation, and secure IPC bridge
-- [ ] 14-02-PLAN.md - Implement privacy clear-data execution and global cookie-mode policy wiring
-- [ ] 14-03-PLAN.md - Build dedicated settings UI and connect typed general/privacy flows
+- [x] 14-01-PLAN.md - Define canonical settings contracts, store validation, and secure IPC bridge
+- [x] 14-02-PLAN.md - Implement privacy clear-data execution and global cookie-mode policy wiring
+- [x] 14-03-PLAN.md - Build dedicated settings UI and connect typed general/privacy flows
 
 Success criteria:
 1. General settings for startup/homepage/downloads persist across restarts.
