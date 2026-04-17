@@ -24,11 +24,12 @@ Users can reliably automate and delegate multi-step browser tasks from a single 
 - ✓ Automation playback with deterministic preflight validation, variable prompting, and policy-based failure handling — Phase 8
 - ✓ Automation library persistence/tagging/run-history UX and sidebar command-first controls — Phase 9
 - ✓ Provider-neutral LLM adapter layer with OpenAI/Ollama config and validation flows — Phase 10
+- ✓ General and privacy settings surface with typed persistence, cookie mode policy, and bucketed clear-data controls — Phase 14
 
 ### Active
 
 - [ ] Home starter page with search, quick links, and automation shortcuts
-- [ ] Settings system for browser behavior, appearance, privacy, LLM, and automation defaults
+- [ ] Settings expansion for appearance, LLM, and automation-default controls
 - [ ] Windows packaging and distribution pipeline
 
 ### Out of Scope
@@ -42,7 +43,7 @@ Users can reliably automate and delegate multi-step browser tasks from a single 
 
 The project is based on prior research comparing browser engine and framework options. Chromium was selected for embeddability and automation compatibility, with Electron chosen for deep browser control, CDP access, and ecosystem maturity. The product direction includes Comet-style agentic browsing, but implemented as explicit capabilities phased over milestones (core shell, automation, AI integration, polish/distribution).
 
-Current state: Phases 1 through 10 are complete. The project now has a runnable Electron browser shell with typed IPC, multi-tab runtime, omnibox routing, navigation controls, download telemetry, session restore, command palette, quick-search popup flow, managed CDP automation bridge substrate, action recording/playback, automation library/history sidebar workflows, and a provider-neutral LLM adapter configuration layer (OpenAI + Ollama) with secure secret handling. The next focus is Phase 11 (page analysis).
+Current state: Phases 1 through 10 and Phase 14 are complete. The project now has a runnable Electron browser shell with typed IPC, multi-tab runtime, omnibox routing, navigation controls, download telemetry, session restore, command palette, quick-search popup flow, managed CDP automation bridge substrate, action recording/playback, automation library/history sidebar workflows, a provider-neutral LLM adapter configuration layer (OpenAI + Ollama) with secure secret handling, and a dedicated general/privacy settings system with typed persistence and clear-data controls. The next planned focus is Phase 15 (theming and shortcuts).
 
 ## Constraints
 
@@ -80,4 +81,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-15 after Phase 10 completion*
+*Last updated: 2026-04-17 after Phase 14 completion*
