@@ -43,10 +43,10 @@
 
 - [ ] **SIDE-01**: User can open a sidebar with sections for saved automations, run history, and AI chat.
 - [ ] **SET-01**: User can configure general browser settings (homepage, startup behavior, downloads path).
-- [ ] **SET-02**: User can configure appearance settings (theme mode, font size, sidebar position).
+- [x] **SET-02**: User can configure appearance settings (theme mode, font size, sidebar position).
 - [ ] **SET-03**: User can configure privacy settings including clear-data controls and cookie preferences.
 - [x] **SET-04**: User can configure LLM settings (provider, model, endpoint, key management).
-- [ ] **SET-05**: User can configure keyboard shortcuts for key browser and automation commands.
+- [x] **SET-05**: User can configure keyboard shortcuts for key browser and automation commands.
 - [ ] **REL-01**: User can install Pathfinder on Windows via signed installer package.
 - [ ] **REL-02**: Installed app can receive controlled updates with rollback-safe behavior.
 
@@ -97,10 +97,10 @@
 | AI-05 | Phase 12 | Complete |
 | SIDE-01 | Phase 9 | Pending |
 | SET-01 | Phase 14 | Pending |
-| SET-02 | Phase 15 | Pending |
+| SET-02 | Phase 15 | Complete |
 | SET-03 | Phase 14 | Pending |
 | SET-04 | Phase 10 | Complete |
-| SET-05 | Phase 15 | Pending |
+| SET-05 | Phase 15 | Complete |
 | REL-01 | Phase 16 | Pending |
 | REL-02 | Phase 16 | Pending |
 
