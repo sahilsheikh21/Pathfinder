@@ -259,6 +259,14 @@ Success criteria:
 ### Phase 15: Theming and Shortcuts
 Goal: Deliver appearance personalization and keyboard customization.
 Requirements: SET-02, SET-05
+Status: Planned (2026-04-17)
+**Plans:** 3 plans
+
+Plans:
+- [ ] 15-01-PLAN.md - Extend canonical settings contracts/store and typed IPC for appearance and shortcut preferences
+- [ ] 15-02-PLAN.md - Implement appearance settings UI and immediate runtime application (theme, font scale, sidebar position)
+- [ ] 15-03-PLAN.md - Implement editable shortcut bindings with conflict-safe persistence and runtime dispatch
+
 Success criteria:
 1. Theme mode and font-size updates apply immediately and persist.
 2. Sidebar position and visual preferences are configurable.
@@ -281,4 +289,4 @@ Success criteria:
 
 ---
 *Roadmap created: 2026-04-14*
-*Last updated: 2026-04-16 after phase 14 planning*
+*Last updated: 2026-04-17 after phase 15 planning*
