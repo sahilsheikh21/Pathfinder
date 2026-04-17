@@ -80,6 +80,10 @@ const api: PathfinderApi = {
   settingsGetSnapshot: async () => ipcRenderer.invoke(IPC_CHANNELS.settingsGetSnapshot),
   settingsSaveGeneral: async (request) => ipcRenderer.invoke(IPC_CHANNELS.settingsSaveGeneral, request),
   settingsSavePrivacy: async (request) => ipcRenderer.invoke(IPC_CHANNELS.settingsSavePrivacy, request),
+  settingsSaveAppearance: async (request) =>
+    ipcRenderer.invoke(IPC_CHANNELS.settingsSaveAppearance, request),
+  settingsSaveShortcuts: async (request) =>
+    ipcRenderer.invoke(IPC_CHANNELS.settingsSaveShortcuts, request),
   settingsClearData: async (request) => ipcRenderer.invoke(IPC_CHANNELS.settingsClearData, request),
   settingsGetRepairNotice: async () => ipcRenderer.invoke(IPC_CHANNELS.settingsGetRepairNotice),
   llmGetConfig: async () => ipcRenderer.invoke(IPC_CHANNELS.llmGetConfig),

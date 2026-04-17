@@ -40,12 +40,16 @@ import { createLiveAgentAuditStore, type LiveAgentAuditStore } from './liveAgent
 import { loadSessionSnapshot, saveSessionSnapshot } from './sessionStore'
 import { IPC_CHANNELS, type AppPlatformResponse, type AppVersionResponse } from '../shared/ipc'
 import {
+  DEFAULT_APPEARANCE_SETTINGS,
+  DEFAULT_SHORTCUT_BINDINGS,
   type AIAutomationGenerateResult,
   type BrowserClearDataBucket,
   type BrowserCookieMode,
   type BrowserSettingsClearDataResult,
+  type BrowserSettingsSaveAppearanceResult,
   type BrowserSettingsSaveGeneralResult,
   type BrowserSettingsSavePrivacyResult,
+  type BrowserSettingsSaveShortcutsResult,
   type BrowserSettingsSnapshot,
   type BrowserSettingsValidationError,
   DEFAULT_HOME_SEARCH_TEMPLATE,
@@ -331,6 +335,14 @@ const defaultSettingsSnapshot = (): BrowserSettingsSnapshot => ({
   privacy: {
     cookieMode: 'allow-all'
   },
+  appearance: {
+    ...DEFAULT_APPEARANCE_SETTINGS
+  },
+  shortcuts: {
+    bindings: {
+      ...DEFAULT_SHORTCUT_BINDINGS
+    }
+  },
   updatedAt: new Date().toISOString(),
   repairNotice: null
 })
@@ -373,6 +385,26 @@ const toUnavailableSettingsSaveGeneralResult = (message: string): BrowserSetting
 })
 
 const toUnavailableSettingsSavePrivacyResult = (message: string): BrowserSettingsSavePrivacyResult => ({
+  ok: false,
+  snapshot: defaultSettingsSnapshot(),
+  validationError: {
+    field: 'settings',
+    code: 'invalid-value',
+    message
+  }
+})
+
+const toUnavailableSettingsSaveAppearanceResult = (message: string): BrowserSettingsSaveAppearanceResult => ({
+  ok: false,
+  snapshot: defaultSettingsSnapshot(),
+  validationError: {
+    field: 'settings',
+    code: 'invalid-value',
+    message
+  }
+})
+
+const toUnavailableSettingsSaveShortcutsResult = (message: string): BrowserSettingsSaveShortcutsResult => ({
   ok: false,
   snapshot: defaultSettingsSnapshot(),
   validationError: {
@@ -940,6 +972,46 @@ function registerIpcHandlers(): void {
           error,
           'privacy',
           'Unable to save privacy settings.'
+        )
+      }
+    }
+  })
+
+  ipcMain.handle(IPC_CHANNELS.settingsSaveAppearance, (_event, request) => {
+    if (!settingsStore) {
+      return toUnavailableSettingsSaveAppearanceResult('Settings service is not available.')
+    }
+
+    try {
+      return settingsStore.saveAppearance(request)
+    } catch (error) {
+      return {
+        ok: false,
+        snapshot: settingsStore.getSnapshot(),
+        validationError: toSettingsValidationError(
+          error,
+          'appearance',
+          'Unable to save appearance settings.'
+        )
+      }
+    }
+  })
+
+  ipcMain.handle(IPC_CHANNELS.settingsSaveShortcuts, (_event, request) => {
+    if (!settingsStore) {
+      return toUnavailableSettingsSaveShortcutsResult('Settings service is not available.')
+    }
+
+    try {
+      return settingsStore.saveShortcuts(request)
+    } catch (error) {
+      return {
+        ok: false,
+        snapshot: settingsStore.getSnapshot(),
+        validationError: toSettingsValidationError(
+          error,
+          'shortcuts',
+          'Unable to save shortcut settings.'
         )
       }
     }
