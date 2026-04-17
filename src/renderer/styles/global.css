@@ -767,6 +767,19 @@ input {
 .settings-panel__field small {
   color: color-mix(in srgb, #d84f4f 82%, white);
 }
+
+.settings-panel__field-detail {
+  color: var(--pf-text-secondary) !important;
+}
+
+.settings-panel__field-error {
+  color: color-mix(in srgb, #d84f4f 82%, white);
+}
+
+.settings-panel__shortcut-list {
+  display: grid;
+  gap: var(--pf-space-10);
+}
 .settings-panel__actions {
   display: flex;
   gap: var(--pf-space-8);

@@ -1,5 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
+import { DEFAULT_SHORTCUT_BINDINGS } from '../../shared/browser'
 import type {
+  BrowserShortcutCommandId,
+  BrowserShortcutSettings,
   BrowserAppearanceSettings,
   BrowserClearDataBucket,
   BrowserGeneralSettings,
@@ -7,21 +10,30 @@ import type {
   BrowserSettingsSnapshot,
   ClearDataBucketResult
 } from '../../shared/browser'
+import { findShortcutConflicts, normalizeShortcutBindings } from '../lib/shortcutBindings'
 
-type SettingsPanelSection = 'general' | 'appearance' | 'privacy' | 'ai' | 'advanced'
+type SettingsPanelSection = 'general' | 'appearance' | 'shortcuts' | 'privacy' | 'ai' | 'advanced'
 
 interface SettingsPanelProps {
   isOpen: boolean
   snapshot: BrowserSettingsSnapshot | null
   loading: boolean
-  busyState: 'idle' | 'saving-general' | 'saving-appearance' | 'saving-privacy' | 'clearing-data'
+  busyState:
+    | 'idle'
+    | 'saving-general'
+    | 'saving-appearance'
+    | 'saving-shortcuts'
+    | 'saving-privacy'
+    | 'clearing-data'
   statusMessage: string
   statusTone: 'neutral' | 'success' | 'error'
   validationErrors: Partial<Record<string, string>>
   clearDataResults: ClearDataBucketResult[]
+  shortcutBindings: BrowserShortcutSettings['bindings']
   onRequestClose: () => void
   onSaveGeneral: (general: BrowserGeneralSettings) => Promise<void>
   onSaveAppearance: (appearance: BrowserAppearanceSettings) => Promise<void>
+  onSaveShortcuts: (shortcuts: BrowserShortcutSettings) => Promise<void>
   onSavePrivacy: (privacy: BrowserPrivacySettings) => Promise<void>
   onClearData: (buckets: BrowserClearDataBucket[]) => Promise<void>
 }
@@ -52,10 +64,39 @@ const CLEAR_DATA_BUCKET_OPTIONS: Array<{ value: BrowserClearDataBucket; label: s
 const SECTION_LABELS: Record<SettingsPanelSection, string> = {
   general: 'General',
   appearance: 'Appearance',
+  shortcuts: 'Shortcuts',
   privacy: 'Privacy',
   ai: 'AI',
   advanced: 'Advanced'
 }
+
+const SHORTCUT_COMMAND_OPTIONS: Array<{ id: BrowserShortcutCommandId; label: string; detail: string }> = [
+  {
+    id: 'command-palette.open',
+    label: 'Command Palette (Primary)',
+    detail: 'Primary keyboard binding used to open the command palette.'
+  },
+  {
+    id: 'command-palette.open-legacy',
+    label: 'Command Palette (Alternate)',
+    detail: 'Secondary command-palette accelerator for compatibility.'
+  },
+  {
+    id: 'quick-search.toggle',
+    label: 'Quick Search Toggle',
+    detail: 'Shows or hides the quick-search popup window.'
+  },
+  {
+    id: 'settings.open',
+    label: 'Open Settings',
+    detail: 'Opens the in-app settings panel.'
+  },
+  {
+    id: 'sidebar.toggle',
+    label: 'Toggle Automation Sidebar',
+    detail: 'Toggles automation sidebar collapsed/open state.'
+  }
+]
 
 const parseStartupUrls = (value: string): string[] => {
   return value
@@ -73,9 +114,11 @@ function SettingsPanel({
   statusTone,
   validationErrors,
   clearDataResults,
+  shortcutBindings,
   onRequestClose,
   onSaveGeneral,
   onSaveAppearance,
+  onSaveShortcuts,
   onSavePrivacy,
   onClearData
 }: SettingsPanelProps) {
@@ -92,6 +135,11 @@ function SettingsPanel({
   const [startupUrlsDraft, setStartupUrlsDraft] = useState(
     () => snapshot?.general.startupUrls.join('\n') ?? ''
   )
+  const [shortcutDraft, setShortcutDraft] = useState<BrowserShortcutSettings['bindings']>(
+    () => ({ ...shortcutBindings })
+  )
+  const [shortcutLocalErrors, setShortcutLocalErrors] =
+    useState<Partial<Record<BrowserShortcutCommandId, string>>>({})
   const [selectedBuckets, setSelectedBuckets] = useState<BrowserClearDataBucket[]>([])
   const [clearConfirmChecked, setClearConfirmChecked] = useState(false)
 
@@ -522,6 +570,87 @@ function SettingsPanel({
               </ul>
             ) : null}
           </section>
+        </section>
+      ) : null}
+
+      {activeSection === 'shortcuts' ? (
+        <section className="settings-panel__section" aria-label="Shortcut settings">
+          <p>Customize core keyboard shortcuts. Conflicting assignments are blocked.</p>
+
+          <div className="settings-panel__shortcut-list">
+            {SHORTCUT_COMMAND_OPTIONS.map((shortcut) => {
+              const localError = shortcutLocalErrors[shortcut.id]
+              const backendError = validationErrors[`shortcuts.bindings.${shortcut.id}`]
+              const errorMessage = localError ?? backendError
+
+              return (
+                <label key={shortcut.id} className="settings-panel__field">
+                  <span>{shortcut.label}</span>
+                  <input
+                    type="text"
+                    value={shortcutDraft[shortcut.id]}
+                    onChange={(event) => {
+                      const value = event.target.value
+                      setShortcutDraft((current) => ({
+                        ...current,
+                        [shortcut.id]: value
+                      }))
+
+                      setShortcutLocalErrors((current) => {
+                        if (!current[shortcut.id]) {
+                          return current
+                        }
+
+                        const next = { ...current }
+                        delete next[shortcut.id]
+                        return next
+                      })
+                    }}
+                    placeholder="Ctrl+K"
+                  />
+                  <small className="settings-panel__field-detail">{shortcut.detail}</small>
+                  {errorMessage ? <small className="settings-panel__field-error">{errorMessage}</small> : null}
+                </label>
+              )
+            })}
+          </div>
+
+          <div className="settings-panel__actions">
+            <button
+              type="button"
+              disabled={busyState !== 'idle'}
+              onClick={() => {
+                setShortcutDraft({ ...DEFAULT_SHORTCUT_BINDINGS })
+                setShortcutLocalErrors({})
+              }}
+            >
+              Reset Defaults
+            </button>
+            <button
+              type="button"
+              disabled={busyState !== 'idle'}
+              onClick={() => {
+                const normalizedResult = normalizeShortcutBindings(shortcutDraft)
+                const conflictErrors = findShortcutConflicts(normalizedResult.normalized)
+                const combinedErrors: Partial<Record<BrowserShortcutCommandId, string>> = {
+                  ...normalizedResult.errors,
+                  ...conflictErrors
+                }
+
+                if (Object.keys(combinedErrors).length > 0) {
+                  setShortcutLocalErrors(combinedErrors)
+                  return
+                }
+
+                setShortcutLocalErrors({})
+                void onSaveShortcuts({
+                  bindings: normalizedResult.normalized
+                })
+              }}
+            >
+              {busyState === 'saving-shortcuts' ? 'Saving...' : 'Save Shortcut Settings'}
+            </button>
+          </div>
         </section>
       ) : null}
 
