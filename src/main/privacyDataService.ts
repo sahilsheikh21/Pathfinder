@@ -18,15 +18,15 @@ export interface PrivacyDataService {
 const toSafeMessage = (error: unknown, fallback: string): string => {
   if (error instanceof Error && error.message.trim()) {
     return error.message
-      .replace(/bearer\s+[a-z0-9._-]+/gi, 'bearer [redacted]')
-      .replace(/sk-[a-z0-9]+/gi, 'sk-[redacted]')
+      .replace(/bearer\s+[^\s'"`]+/gi, 'bearer [redacted]')
+      .replace(/\bsk-[^\s'"`]+/gi, 'sk-[redacted]')
       .trim()
   }
 
   if (typeof error === 'string' && error.trim()) {
     return error
-      .replace(/bearer\s+[a-z0-9._-]+/gi, 'bearer [redacted]')
-      .replace(/sk-[a-z0-9]+/gi, 'sk-[redacted]')
+      .replace(/bearer\s+[^\s'"`]+/gi, 'bearer [redacted]')
+      .replace(/\bsk-[^\s'"`]+/gi, 'sk-[redacted]')
       .trim()
   }
 

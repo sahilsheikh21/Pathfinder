@@ -234,8 +234,8 @@ const toErrorMessage = (error: unknown): string => {
 
 const toRedactedMainErrorMessage = (error: unknown, fallback: string): string => {
   const message = toErrorMessage(error)
-    .replace(/bearer\s+[a-z0-9._-]+/gi, 'bearer [redacted]')
-    .replace(/sk-[a-z0-9]+/gi, 'sk-[redacted]')
+    .replace(/bearer\s+[^\s'"`]+/gi, 'bearer [redacted]')
+    .replace(/\bsk-[^\s'"`]+/gi, 'sk-[redacted]')
     .trim()
 
   return message || fallback
@@ -404,7 +404,7 @@ const applyCookieModePolicy = async (cookieMode: BrowserCookieMode): Promise<voi
     }
     case 'block-third-party': {
       // Electron does not provide first-class global third-party cookie blocking.
-      // Persisting this mode enables deterministic UX while enforcement can evolve later.
+      // Persisting this mode enables explicit user intent while enforcement can evolve later.
       return
     }
     case 'block-all': {

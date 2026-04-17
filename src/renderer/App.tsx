@@ -757,7 +757,11 @@ function App() {
 
         if (result.ok) {
           setSettingsStatusTone('success')
-          setSettingsStatusMessage('Privacy settings saved successfully.')
+          setSettingsStatusMessage(
+            privacy.cookieMode === 'block-third-party'
+              ? 'Privacy settings saved. Third-party cookie blocking is currently best effort.'
+              : 'Privacy settings saved successfully.'
+          )
           return
         }
 

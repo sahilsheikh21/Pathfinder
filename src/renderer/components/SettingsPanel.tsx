@@ -328,9 +328,15 @@ function SettingsPanel({
               }}
             >
               <option value="allow-all">Allow All</option>
-              <option value="block-third-party">Block Third-Party</option>
+              <option value="block-third-party">Block Third-Party (Best Effort)</option>
               <option value="block-all">Block All</option>
             </select>
+            {privacyDraft.cookieMode === 'block-third-party' ? (
+              <small>
+                Third-party blocking is saved as policy intent; some embedded flows may still set
+                cookies depending on site and Electron limitations.
+              </small>
+            ) : null}
             {validationErrors['privacy.cookieMode'] ? (
               <small>{validationErrors['privacy.cookieMode']}</small>
             ) : null}

@@ -639,6 +639,9 @@ input {
   display: grid;
   gap: var(--pf-space-4);
   font-size: 12px;
+  color: var(--pf-text-secondary);
+}
+
 .settings-launch-button {
   min-height: 28px;
   border: 1px solid var(--pf-border-subtle);
@@ -843,8 +846,6 @@ input {
     border-left: 0;
     padding-top: calc(var(--pf-space-12) + 16px);
   }
-}
-  color: var(--pf-text-secondary);
 }
 
 .automation-sidebar-ai-generation__field input,
