@@ -21,7 +21,21 @@
   --pf-shadow-sm: 0 8px 18px rgba(19, 24, 34, 0.08);
   --pf-shadow-md: 0 18px 30px rgba(19, 24, 34, 0.12);
   --pf-shadow-lg: 0 24px 42px rgba(19, 24, 34, 0.16);
+  --pf-theme-transition-ms: 150ms;
+  --pf-font-scale: 1;
   --pf-font-family: "Segoe UI", "SF Pro Text", "Helvetica Neue", sans-serif;
+}
+
+:root.font-scale-small {
+  --pf-font-scale: 0.92;
+}
+
+:root.font-scale-medium {
+  --pf-font-scale: 1;
+}
+
+:root.font-scale-large {
+  --pf-font-scale: 1.08;
 }
 
 :root.theme-dark {
@@ -36,4 +50,12 @@
   --pf-shadow-sm: 0 8px 18px rgba(0, 0, 0, 0.25);
   --pf-shadow-md: 0 18px 30px rgba(0, 0, 0, 0.34);
   --pf-shadow-lg: 0 24px 42px rgba(0, 0, 0, 0.42);
+}
+
+:root.theme-transitioning,
+:root.theme-transitioning * {
+  transition:
+    background-color var(--pf-theme-transition-ms) ease,
+    border-color var(--pf-theme-transition-ms) ease,
+    color var(--pf-theme-transition-ms) ease;
 }

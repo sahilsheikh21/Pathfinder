@@ -13,8 +13,12 @@ body,
 
 body {
   font-family: "Segoe UI Variable", "Aptos", "Trebuchet MS", sans-serif;
+  font-size: calc(14px * var(--pf-font-scale));
   background: #12161d;
   color: var(--pf-text-primary);
+  transition:
+    background-color var(--pf-theme-transition-ms) ease,
+    color var(--pf-theme-transition-ms) ease;
 }
 
 button,
@@ -30,6 +34,25 @@ input {
 .browser-shell {
   min-height: 100vh;
   background: linear-gradient(180deg, #262b33 0, #1a2029 68px, #151a22 68px, #151a22 100%);
+}
+
+.browser-shell--tab-strip-right .browser-chrome {
+  inset: 0 248px auto 0;
+}
+
+.browser-shell--tab-strip-right .browser-workspace {
+  padding-left: 0;
+  padding-right: 248px;
+}
+
+.browser-shell--tab-strip-right .browser-tab-strip {
+  inset: 0 0 0 auto;
+  border-right: 0;
+  border-left: 1px solid color-mix(in srgb, #90a0ba 20%, transparent);
+}
+
+.browser-shell--tab-strip-right .automation-sidebar--overlay {
+  left: 0;
 }
 
 .browser-workspace {
@@ -2109,12 +2132,34 @@ input {
     padding-left: 210px;
   }
 
+  .browser-shell--tab-strip-right .browser-workspace {
+    padding-left: 0;
+    padding-right: 210px;
+  }
+
   .browser-chrome {
     inset: 0 0 auto 210px;
   }
 
+  .browser-shell--tab-strip-right .browser-chrome {
+    inset: 0 210px auto 0;
+  }
+
   .automation-sidebar-overlay-toggle {
     left: 222px;
+  }
+
+  .browser-shell--tab-strip-right .browser-tab-strip {
+    inset: 0 0 0 auto;
+  }
+
+  .browser-shell--tab-strip-right .automation-sidebar--overlay {
+    left: 0;
+  }
+
+  .browser-shell--tab-strip-right .automation-sidebar-overlay-toggle {
+    left: auto;
+    right: 12px;
   }
 
   .automation-sidebar {
