@@ -14,6 +14,9 @@ import {
   type BrowserAppearanceSettings,
   type BrowserClearDataBucket,
   DEFAULT_APPEARANCE_SETTINGS,
+  DEFAULT_SHORTCUT_BINDINGS,
+  type BrowserShortcutCommandId,
+  type BrowserShortcutSettings,
   type BrowserSettingsSnapshot,
   type BrowserSettingsValidationError,
   type ClearDataBucketResult,
@@ -49,6 +52,7 @@ import DownloadShelf from './components/DownloadShelf'
 import HomeStarterPage from './components/HomeStarterPage'
 import SettingsPanel from './components/SettingsPanel'
 import { createBrowserCommands, type CommandPaletteCommand } from './lib/commandPalette'
+import { formatShortcutBinding, matchesKeyboardEvent } from './lib/shortcutBindings'
 import NavigationBar from './components/NavigationBar'
 import { applyTheme, subscribeToSystemThemeChanges } from './theme'
 import './styles/global.css'
@@ -351,9 +355,20 @@ function App() {
   const [appearanceSettings, setAppearanceSettings] = useState<BrowserAppearanceSettings>({
     ...DEFAULT_APPEARANCE_SETTINGS
   })
+  const [shortcutSettings, setShortcutSettings] = useState<BrowserShortcutSettings>({
+    bindings: {
+      ...DEFAULT_SHORTCUT_BINDINGS
+    }
+  })
   const [settingsSnapshot, setSettingsSnapshot] = useState<BrowserSettingsSnapshot | null>(null)
   const [settingsBusyState, setSettingsBusyState] = useState<
-    'idle' | 'loading' | 'saving-general' | 'saving-appearance' | 'saving-privacy' | 'clearing-data'
+    | 'idle'
+    | 'loading'
+    | 'saving-general'
+    | 'saving-appearance'
+    | 'saving-shortcuts'
+    | 'saving-privacy'
+    | 'clearing-data'
   >('idle')
   const [settingsStatusMessage, setSettingsStatusMessage] = useState(DEFAULT_SETTINGS_STATUS_MESSAGE)
   const [settingsStatusTone, setSettingsStatusTone] = useState<'neutral' | 'success' | 'error'>('neutral')
@@ -677,6 +692,7 @@ function App() {
   const syncSettingsSnapshot = useCallback((snapshot: BrowserSettingsSnapshot): void => {
     setSettingsSnapshot(snapshot)
     setAppearanceSettings(snapshot.appearance)
+    setShortcutSettings(snapshot.shortcuts)
   }, [])
 
   const loadSettingsSnapshot = useCallback(async (): Promise<BrowserSettingsSnapshot> => {
@@ -784,6 +800,38 @@ function App() {
         setSettingsStatusTone('error')
         setSettingsStatusMessage(
           error instanceof Error ? error.message : 'Appearance settings could not be saved.'
+        )
+      } finally {
+        setSettingsBusyState('idle')
+      }
+    },
+    [applySettingsValidationError, syncSettingsSnapshot]
+  )
+
+  const saveShortcutSettings = useCallback(
+    async (shortcuts: BrowserShortcutSettings): Promise<void> => {
+      setSettingsBusyState('saving-shortcuts')
+      setSettingsStatusTone('neutral')
+      setSettingsStatusMessage('Saving shortcut settings...')
+      setSettingsClearDataResults([])
+
+      try {
+        const result = await window.pathfinder.settingsSaveShortcuts({ shortcuts })
+        syncSettingsSnapshot(result.snapshot)
+        applySettingsValidationError(result.validationError)
+
+        if (result.ok) {
+          setSettingsStatusTone('success')
+          setSettingsStatusMessage('Shortcut settings saved successfully.')
+          return
+        }
+
+        setSettingsStatusTone('error')
+        setSettingsStatusMessage(result.validationError?.message ?? 'Shortcut settings could not be saved.')
+      } catch (error) {
+        setSettingsStatusTone('error')
+        setSettingsStatusMessage(
+          error instanceof Error ? error.message : 'Shortcut settings could not be saved.'
         )
       } finally {
         setSettingsBusyState('idle')
@@ -2380,6 +2428,31 @@ function App() {
       : 'browser-shell'
   }, [appearanceSettings.sidebarPosition])
 
+  const commandPaletteShortcutHint = useMemo(() => {
+    return formatShortcutBinding(shortcutSettings.bindings['command-palette.open'])
+  }, [shortcutSettings.bindings])
+
+  const shortcutActionMap = useMemo<Record<BrowserShortcutCommandId, () => void>>(
+    () => ({
+      'command-palette.open': () => {
+        openCommandPalette()
+      },
+      'command-palette.open-legacy': () => {
+        openCommandPalette()
+      },
+      'quick-search.toggle': () => {
+        void window.pathfinder.quickSearchToggle()
+      },
+      'settings.open': () => {
+        void openSettingsPanel()
+      },
+      'sidebar.toggle': () => {
+        void toggleSidebarFromCommand()
+      }
+    }),
+    [openCommandPalette, openSettingsPanel, toggleSidebarFromCommand]
+  )
+
   useEffect(() => {
     void loadSettingsSnapshot().catch(() => {
       // Keep defaults active when settings snapshot cannot be loaded.
@@ -2468,34 +2541,28 @@ function App() {
     }
 
     const handleKeyDown = (event: KeyboardEvent): void => {
-      if (!event.ctrlKey || isEditableTarget(event.target)) {
+      if (isEditableTarget(event.target)) {
         return
       }
 
-      const key = event.key.toLowerCase()
-      const opensWithCtrlShiftS = event.shiftKey && key === 's'
-      const opensWithCtrlShiftP = event.shiftKey && key === 'p'
-      const opensWithCtrlK = key === 'k'
+      const commandIds = Object.keys(shortcutSettings.bindings) as BrowserShortcutCommandId[]
+      for (const commandId of commandIds) {
+        const binding = shortcutSettings.bindings[commandId]
+        if (!matchesKeyboardEvent(event, binding)) {
+          continue
+        }
 
-      if (opensWithCtrlShiftS) {
         event.preventDefault()
-        void window.pathfinder.quickSearchToggle()
+        shortcutActionMap[commandId]()
         return
       }
-
-      if (!opensWithCtrlShiftP && !opensWithCtrlK) {
-        return
-      }
-
-      event.preventDefault()
-      openCommandPalette()
     }
 
     window.addEventListener('keydown', handleKeyDown)
     return () => {
       window.removeEventListener('keydown', handleKeyDown)
     }
-  }, [openCommandPalette])
+  }, [shortcutActionMap, shortcutSettings.bindings])
 
   return (
     <main className={shellClassName}>
@@ -2530,6 +2597,7 @@ function App() {
         <BrowserTabStrip
           tabs={tabs}
           activeTabId={activeTabId}
+          commandPaletteShortcutHint={commandPaletteShortcutHint}
           onCreateTab={handleCreateTab}
           onActivateTab={handleActivateTab}
           onCloseTab={handleCloseTab}
@@ -3644,9 +3712,11 @@ function App() {
           statusTone={settingsStatusTone}
           validationErrors={settingsValidationErrors}
           clearDataResults={settingsClearDataResults}
+          shortcutBindings={shortcutSettings.bindings}
           onRequestClose={closeSettingsPanel}
           onSaveGeneral={saveGeneralSettings}
           onSaveAppearance={saveAppearanceSettings}
+          onSaveShortcuts={saveShortcutSettings}
           onSavePrivacy={savePrivacySettings}
           onClearData={clearSettingsDataBuckets}
         />
