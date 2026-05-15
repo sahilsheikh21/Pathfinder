@@ -983,7 +983,12 @@ function registerIpcHandlers(): void {
     }
 
     try {
-      return settingsStore.saveAppearance(request)
+      const result = settingsStore.saveAppearance(request)
+      if (result.ok) {
+        browserRuntime?.setSidebarPosition(result.snapshot.appearance.sidebarPosition)
+      }
+
+      return result
     } catch (error) {
       return {
         ok: false,
@@ -1515,6 +1520,10 @@ function createWindow(): void {
       saveSessionSnapshot(userDataPath, browserRuntime.exportSnapshot())
     }
   })
+
+  browserRuntime.setSidebarPosition(
+    settingsStore?.getSnapshot().appearance.sidebarPosition ?? DEFAULT_APPEARANCE_SETTINGS.sidebarPosition
+  )
 
   if (llmAdapterService) {
     pageAnalysisService = createPageAnalysisService({

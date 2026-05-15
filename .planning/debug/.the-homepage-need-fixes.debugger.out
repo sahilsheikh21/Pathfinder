@@ -1,0 +1,14 @@
+Implemented a concrete homepage usability fix set and updated the debug session state.
+
+- Fixed null-active-tab homepage navigation no-op in [App.tsx](D:/Theshit/Pathfinder/src/renderer/App.tsx#L2039): when `activeTabId` is missing, `handleNavigate` now opens a new tab instead of returning early.
+- Fixed home search behavior in [HomeStarterPage.tsx](D:/Theshit/Pathfinder/src/renderer/components/HomeStarterPage.tsx#L7): search now uses `resolveOmniboxInput` so URL/hostname input navigates directly, while other input uses the search template.
+- Removed unnecessary quick-link/recent-data load gating on active tab in [HomeStarterPage.tsx](D:/Theshit/Pathfinder/src/renderer/components/HomeStarterPage.tsx#L166), so homepage content still loads in null-active-tab fallback states.
+- Updated placeholder copy to match actual behavior in [HomeStarterPage.tsx](D:/Theshit/Pathfinder/src/renderer/components/HomeStarterPage.tsx#L239).
+- Recorded evidence, root cause, fix, and verification in [.planning/debug/the-homepage-need-fixes.md](D:/Theshit/Pathfinder/.planning/debug/the-homepage-need-fixes.md#L1) and marked it `resolved`.
+
+Verification:
+- `npm run typecheck` passed.
+- `npm run lint` passed.
+
+Next step:
+1. Launch the app and quickly validate homepage flows (URL entry in search, quick-link open behavior) to confirm runtime UX matches expectations.

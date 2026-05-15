@@ -32,22 +32,36 @@ function NavigationBar({ activeTab, onBack, onForward, onReload, onStop, onNavig
           className="navigation-bar__button"
           onClick={onBack}
           disabled={!activeTab?.canGoBack}
+          aria-label="Go back"
         >
-          Back
+          <span aria-hidden="true">←</span>
         </button>
         <button
           type="button"
           className="navigation-bar__button"
           onClick={onForward}
           disabled={!activeTab?.canGoForward}
+          aria-label="Go forward"
         >
-          Forward
+          <span aria-hidden="true">→</span>
         </button>
-        <button type="button" className="navigation-bar__button" onClick={onReload} disabled={!activeTab}>
-          Reload
+        <button
+          type="button"
+          className="navigation-bar__button"
+          onClick={onReload}
+          disabled={!activeTab}
+          aria-label="Reload"
+        >
+          <span aria-hidden="true">↻</span>
         </button>
-        <button type="button" className="navigation-bar__button" onClick={onStop} disabled={!activeTab}>
-          Stop
+        <button
+          type="button"
+          className="navigation-bar__button"
+          onClick={onStop}
+          disabled={!activeTab}
+          aria-label="Stop loading"
+        >
+          <span aria-hidden="true">■</span>
         </button>
       </div>
 
@@ -60,7 +74,9 @@ function NavigationBar({ activeTab, onBack, onForward, onReload, onStop, onNavig
         placeholder="Search or enter address"
       />
 
-      {activeTab?.isLoading ? <span className="navigation-bar__status">Loading...</span> : null}
+      <span className={`navigation-bar__status ${activeTab?.isLoading ? 'is-loading' : ''}`} aria-live="polite">
+        {activeTab?.isLoading ? 'Loading' : 'Ready'}
+      </span>
     </form>
   )
 }

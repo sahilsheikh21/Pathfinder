@@ -146,6 +146,36 @@ const DEFAULT_LIVE_AGENT_STATUS: LiveAgentStatusResult = {
 }
 
 const DEFAULT_PAGE_ANALYSIS_VERBOSITY: PageAnalysisVerbosity = 'concise'
+const SIDEBAR_OVERLAY_BREAKPOINT_PX = 1200
+
+const DEBUG_INGEST_ENDPOINT = 'http://127.0.0.1:7839/ingest/64d3a356-f4d1-4d9b-bc7d-9ca7ac6308c7'
+const DEBUG_SESSION_ID = 'b6ad3f'
+
+const emitDebugLog = (
+  hypothesisId: string,
+  location: string,
+  message: string,
+  data: Record<string, unknown>
+): void => {
+  // #region agent log
+  fetch(DEBUG_INGEST_ENDPOINT, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Debug-Session-Id': DEBUG_SESSION_ID
+    },
+    body: JSON.stringify({
+      sessionId: DEBUG_SESSION_ID,
+      runId: 'initial',
+      hypothesisId,
+      location,
+      message,
+      data,
+      timestamp: Date.now()
+    })
+  }).catch(() => {})
+  // #endregion
+}
 
 const AI_AUTOMATION_ALLOWED_ACTIONS = new Set<RecorderWorkflowStep['action']>([
   'navigate',
@@ -349,7 +379,9 @@ function App() {
   const [aiStatusMessage, setAiStatusMessage] = useState('AI provider settings are loading...')
   const [aiStatusTone, setAiStatusTone] = useState<'neutral' | 'success' | 'error'>('neutral')
   const [aiBusyState, setAiBusyState] = useState<'idle' | 'saving' | 'validating'>('idle')
-  const [isOverlayMode, setIsOverlayMode] = useState(() => window.innerWidth < 980)
+  const [isOverlayMode, setIsOverlayMode] = useState(
+    () => window.innerWidth < SIDEBAR_OVERLAY_BREAKPOINT_PX
+  )
   const [isOverlayOpen, setIsOverlayOpen] = useState(false)
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
   const [appearanceSettings, setAppearanceSettings] = useState<BrowserAppearanceSettings>({
@@ -1921,7 +1953,7 @@ function App() {
 
   useEffect(() => {
     const syncOverlayMode = (): void => {
-      const nextOverlayMode = window.innerWidth < 980
+      const nextOverlayMode = window.innerWidth < SIDEBAR_OVERLAY_BREAKPOINT_PX
       setIsOverlayMode(nextOverlayMode)
       if (!nextOverlayMode) {
         setIsOverlayOpen(false)
@@ -2006,6 +2038,8 @@ function App() {
 
   const handleNavigate = async (target: string): Promise<void> => {
     if (!activeTabId) {
+      const seededTabs = await window.pathfinder.createTab(target)
+      syncTabs(seededTabs)
       return
     }
 
@@ -2465,6 +2499,16 @@ function App() {
     root.classList.add(`font-scale-${appearanceSettings.fontScalePreset}`)
 
     applyTheme(appearanceSettings.themeMode)
+    const rootStyles = window.getComputedStyle(root)
+    emitDebugLog('H1-theme-mismatch', 'App.tsx:2498', 'Applied theme settings', {
+      requestedThemeMode: appearanceSettings.themeMode,
+      fontScalePreset: appearanceSettings.fontScalePreset,
+      rootClasses: root.className,
+      rootTextPrimaryToken: rootStyles.getPropertyValue('--pf-text-primary').trim(),
+      rootBgBaseToken: rootStyles.getPropertyValue('--pf-bg-base').trim(),
+      bodyBackground: window.getComputedStyle(document.body).backgroundColor,
+      bodyColor: window.getComputedStyle(document.body).color
+    })
 
     if (appearanceSettings.themeMode !== 'system') {
       return
@@ -2474,6 +2518,43 @@ function App() {
       applyTheme('system')
     })
   }, [appearanceSettings.fontScalePreset, appearanceSettings.themeMode])
+
+  useEffect(() => {
+    emitDebugLog('H5-home-render-gate', 'App.tsx:2510', 'Home render gate snapshot', {
+      activeTabId,
+      activeTabUrl: activeTab?.url ?? null,
+      tabsCount: tabs.length,
+      isHomeTab,
+      shouldRenderHomeStarter,
+      shellClassName
+    })
+  }, [activeTab?.url, activeTabId, isHomeTab, shellClassName, shouldRenderHomeStarter, tabs.length])
+
+  useEffect(() => {
+    const viewportElement = document.querySelector<HTMLElement>('.browser-viewport')
+    const homeElement = document.querySelector<HTMLElement>('.home-starter')
+    const chromeElement = document.querySelector<HTMLElement>('.browser-chrome')
+
+    const viewportRect = viewportElement?.getBoundingClientRect()
+    const homeRect = homeElement?.getBoundingClientRect()
+    const chromeRect = chromeElement?.getBoundingClientRect()
+    const homeStyles = homeElement ? window.getComputedStyle(homeElement) : null
+
+    emitDebugLog('H6-home-dom-visibility', 'App.tsx:2532', 'Home DOM visibility snapshot', {
+      hasViewport: Boolean(viewportElement),
+      hasHomeElement: Boolean(homeElement),
+      hasChrome: Boolean(chromeElement),
+      viewportTop: viewportRect?.top ?? null,
+      viewportHeight: viewportRect?.height ?? null,
+      homeTop: homeRect?.top ?? null,
+      homeHeight: homeRect?.height ?? null,
+      chromeTop: chromeRect?.top ?? null,
+      chromeHeight: chromeRect?.height ?? null,
+      homeDisplay: homeStyles?.display ?? null,
+      homeVisibility: homeStyles?.visibility ?? null,
+      homeOpacity: homeStyles?.opacity ?? null
+    })
+  }, [shouldRenderHomeStarter, tabs.length, activeTabId])
 
   useEffect(() => {
     const initialRefreshTimer = window.setTimeout(() => {

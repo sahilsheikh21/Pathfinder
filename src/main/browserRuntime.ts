@@ -3,6 +3,7 @@ import { randomUUID } from 'node:crypto'
 import { HOME_STARTER_URL } from '../shared/browser'
 import type {
   BrowserNavigationRequest,
+  BrowserSidebarPosition,
   BrowserSessionSnapshot,
   BrowserStatePayload,
   BrowserTabState
@@ -25,7 +26,10 @@ export interface TabNavigationLifecycleEvent {
   kind: 'navigate' | 'navigate-in-page' | 'reload'
 }
 
-const TAB_CHROME_HEIGHT = 88
+const TAB_CHROME_HEIGHT = 72
+const TAB_SIDE_RAIL_WIDTH = 248
+const HORIZONTAL_TAB_STRIP_HEIGHT = 64
+const HORIZONTAL_TAB_BREAKPOINT = 1440
 
 export class BrowserRuntime {
   private readonly tabs = new Map<string, TabRecord>()
@@ -37,6 +41,8 @@ export class BrowserRuntime {
   private onTabClosedCallbacks: Array<(tabId: string) => void> = []
 
   private onTabNavigationCallbacks: Array<(event: TabNavigationLifecycleEvent) => void> = []
+
+  private sidebarPosition: BrowserSidebarPosition = 'left'
 
   constructor(
     private readonly mainWindow: BrowserWindow,
@@ -74,12 +80,21 @@ export class BrowserRuntime {
     this.destroyAllTabs()
 
     if (snapshot.tabs.length === 0) {
-      return this.createTab('about:blank')
+      return this.createTab(HOME_STARTER_URL)
     }
+
+    // Migrate legacy startup snapshots that persisted a single blank tab before
+    // the Home starter route was introduced as the default first tab.
+    const shouldPromoteLegacyBlankToHome =
+      snapshot.tabs.length === 1 &&
+      (!snapshot.tabs[0]?.url || snapshot.tabs[0]?.url === 'about:blank')
 
     for (const savedTab of snapshot.tabs) {
       const tabId = savedTab.id || randomUUID()
-      const tab = this.createTabRecord(tabId, savedTab.url)
+      const tab = this.createTabRecord(
+        tabId,
+        shouldPromoteLegacyBlankToHome ? HOME_STARTER_URL : savedTab.url
+      )
       tab.title = savedTab.title || tab.title
       tab.isLoading = savedTab.isLoading
       tab.canGoBack = savedTab.canGoBack
@@ -117,12 +132,12 @@ export class BrowserRuntime {
     if (this.activeTabId && this.activeTabId !== tabId) {
       const activeTab = this.tabs.get(this.activeTabId)
       if (activeTab) {
-        this.mainWindow.contentView.removeChildView(activeTab.view)
+        this.detachTabView(activeTab)
       }
     }
 
     this.activeTabId = tabId
-    this.mainWindow.contentView.addChildView(tab.view)
+    this.syncActiveTabView(tab)
     this.layoutActiveTabView()
     this.emitState()
 
@@ -179,6 +194,11 @@ export class BrowserRuntime {
     }
   }
 
+  setSidebarPosition(position: BrowserSidebarPosition): void {
+    this.sidebarPosition = position
+    this.layoutActiveTabView()
+  }
+
   navigate(request: BrowserNavigationRequest): BrowserTabState[] {
     const tab = this.tabs.get(request.tabId)
     if (!tab) {
@@ -188,6 +208,25 @@ export class BrowserRuntime {
     const target = this.normalizeNavigationTarget(request.input)
     if (!target) {
       return this.getTabSnapshotList()
+    }
+
+    if (target === HOME_STARTER_URL) {
+      tab.url = HOME_STARTER_URL
+      tab.isLoading = false
+      tab.canGoBack = false
+      tab.canGoForward = false
+
+      if (this.activeTabId === tab.id) {
+        this.syncActiveTabView(tab)
+      }
+
+      this.emitState()
+      return this.getTabSnapshotList()
+    }
+
+    if (this.activeTabId === tab.id) {
+      this.syncActiveTabView(tab)
+      this.layoutActiveTabView()
     }
 
     void tab.view.webContents.loadURL(target)
@@ -354,13 +393,34 @@ export class BrowserRuntime {
       return
     }
 
+    if (tab.url === HOME_STARTER_URL) {
+      return
+    }
+
     const bounds = this.mainWindow.getContentBounds()
-    tab.view.setBounds({
-      x: 0,
-      y: TAB_CHROME_HEIGHT,
-      width: bounds.width,
-      height: Math.max(bounds.height - TAB_CHROME_HEIGHT, 0)
-    })
+
+    if (bounds.width <= HORIZONTAL_TAB_BREAKPOINT) {
+      // Horizontal tab strip layout — tabs sit below the chrome bar,
+      // no vertical sidebar, content starts below both bars.
+      const offsetY = TAB_CHROME_HEIGHT + HORIZONTAL_TAB_STRIP_HEIGHT
+
+      tab.view.setBounds({
+        x: 0,
+        y: offsetY,
+        width: Math.max(bounds.width, 0),
+        height: Math.max(bounds.height - offsetY, 0)
+      })
+    } else {
+      // Vertical tab rail layout — content starts after the rail when it is
+      // on the left, or at x=0 when the rail is on the right.
+      const sidebarOnRight = this.sidebarPosition === 'right'
+      tab.view.setBounds({
+        x: sidebarOnRight ? 0 : TAB_SIDE_RAIL_WIDTH,
+        y: TAB_CHROME_HEIGHT,
+        width: Math.max(bounds.width - TAB_SIDE_RAIL_WIDTH, 0),
+        height: Math.max(bounds.height - TAB_CHROME_HEIGHT, 0)
+      })
+    }
   }
 
   private normalizeNavigationTarget(input?: string): string | null {
@@ -419,10 +479,33 @@ export class BrowserRuntime {
 
     const target = this.normalizeNavigationTarget(initialUrl)
     if (target) {
-      void tab.view.webContents.loadURL(target)
+      tab.url = target
+
+      if (target === HOME_STARTER_URL) {
+        return tab
+      } else {
+        void tab.view.webContents.loadURL(target)
+      }
     }
 
     return tab
+  }
+
+  private detachTabView(tab: TabRecord): void {
+    try {
+      this.mainWindow.contentView.removeChildView(tab.view)
+    } catch {
+      // Ignore when view is not currently attached.
+    }
+  }
+
+  private syncActiveTabView(tab: TabRecord): void {
+    if (tab.url === HOME_STARTER_URL) {
+      this.detachTabView(tab)
+      return
+    }
+
+    this.mainWindow.contentView.addChildView(tab.view)
   }
 
   private destroyAllTabs(): void {

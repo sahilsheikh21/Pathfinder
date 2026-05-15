@@ -12,10 +12,16 @@
   --pf-radius-lg: 18px;
   --pf-radius-xl: 24px;
   --pf-radius-pill: 999px;
+  --pf-space-2: 2px;
   --pf-space-4: 4px;
+  --pf-space-6: 6px;
   --pf-space-8: 8px;
+  --pf-space-10: 10px;
   --pf-space-12: 12px;
+  --pf-space-14: 14px;
   --pf-space-16: 16px;
+  --pf-space-18: 18px;
+  --pf-space-20: 20px;
   --pf-space-24: 24px;
   --pf-space-32: 32px;
   --pf-shadow-sm: 0 8px 18px rgba(19, 24, 34, 0.08);

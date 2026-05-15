@@ -37,7 +37,10 @@ function BrowserTabStrip({
       </header>
 
       <button type="button" className="browser-tab-strip__new" onClick={onCreateTab}>
-        + New Tab
+        <span className="browser-tab-strip__new-icon" aria-hidden="true">
+          +
+        </span>
+        <span>New Tab</span>
       </button>
 
       <div className="browser-tab-strip__tabs" role="tablist" aria-label="Browser tabs">
@@ -65,7 +68,7 @@ function BrowserTabStrip({
                 }}
                 aria-label={`Close ${getTabLabel(tab)}`}
               >
-                x
+                <span aria-hidden="true">x</span>
               </button>
             </div>
           )
